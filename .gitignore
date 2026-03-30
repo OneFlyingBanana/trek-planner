@@ -1,0 +1,9 @@
+data/
+.env
+.venv/
+*.egg-info/
+__pycache__/
+uv.lock
+ACTION_PLAN.md
+plans/
+DEV_LOGS/
