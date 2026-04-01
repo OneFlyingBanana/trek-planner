@@ -9,7 +9,7 @@ Tell Claude what kind of trip you want, and it will research destinations, build
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
 - A [TREK](https://github.com/mauriceboe/TREK) instance with the MCP addon enabled
 - [Node.js](https://nodejs.org/) (for MCP server packages)
-- A [Google Maps API key](https://console.cloud.google.com/) (for geocoding places)
+- A [Google Maps API key](https://console.cloud.google.com/) (for place search, details, directions)
 
 ## Setup
 
@@ -62,9 +62,9 @@ You can also just describe what you want in natural language — Claude will use
 
 ### What happens
 
-1. Claude gathers your requirements (destination, dates, budget, interests)
+1. Claude gathers your requirements (starting point, destination, dates, budget, interests)
 2. Researches destinations, routes, activities, and pricing via web search
-3. Geocodes locations via Google Maps
+3. Looks up places via Google Maps (ratings, reviews, opening hours, directions)
 4. Creates the full trip in TREK with places, day assignments, budget, packing list, reservations, and notes
 5. Saves a local JSON backup in `plans/`
 
@@ -75,7 +75,7 @@ Three MCP servers are configured in `.claude/settings.json`:
 | Server | Purpose |
 |:---|:---|
 | **trek** | Trip management via TREK (34 tools — trips, places, days, budget, packing, reservations, notes) |
-| **google-maps** | Geocoding, directions, place search |
+| **google-maps** | Place search, place details (reviews, hours, phone), directions, distance matrix |
 | **airbnb** | Accommodation search and listing details |
 
 ## Troubleshooting
@@ -99,7 +99,18 @@ If TREK tools aren't available after starting Claude Code:
 
 ### Google Maps not working
 
-Make sure your API key has the Geocoding API enabled in [Google Cloud Console](https://console.cloud.google.com/).
+If Google Maps tools aren't available after starting Claude Code:
+
+1. **Check your `.env`** — make sure `GOOGLE_MAPS_API_KEY` is set
+2. **Test the connection manually:**
+   ```bash
+   bash core/google-maps-mcp.sh
+   ```
+   This should start without errors. Press `Ctrl+C` to stop it.
+3. **Enable the required APIs** in [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services:
+   - **Places API** (place search and details — ratings, reviews, opening hours)
+   - **Directions API** (routes and drive times)
+   - **Geocoding API** (address lookups)
 
 ### Node.js errors
 
@@ -113,6 +124,7 @@ The MCP servers require Node.js and `npx`. Install from [nodejs.org](https://nod
   skills/plan-trip/SKILL.md   # The /plan-trip skill
 core/
   trek-mcp.sh                 # TREK MCP server launcher (reads config from .env)
+  google-maps-mcp.sh          # Google Maps MCP server launcher (reads API key from .env)
   system_prompt.txt           # Trip creation workflow and JSON backup schema
 plans/                        # Local trip backups (gitignored)
 ```

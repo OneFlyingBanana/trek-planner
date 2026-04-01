@@ -7,21 +7,21 @@ Use these tools in order:
 1. `create_trip` — Create trip with title, description, start_date, end_date, currency
 2. `get_trip_summary` — Retrieve trip with auto-generated day IDs
 3. `update_day` — Set descriptive day titles
-4. `create_place` — Add places with name, description, address, lat, lng
-5. `assign_place_to_day` — Link places to days
-6. `update_assignment_time` — Set visit start/end times
-7. `reorder_day_assignments` — Order places within each day
-8. `create_day_note` — Add notes with timing, tips, logistics
-9. `create_budget_item` — Add budget entries by category
-10. `create_reservation` — Add flight/hotel/restaurant reservations
-11. `create_packing_item` — Build a packing checklist
+4. For each day, build items in itinerary order (first step first):
+   - **Places**: `maps_search_places` → `create_place` → `assign_place_to_day` → `update_assignment_time`
+   - **Notes**: `create_day_note` for timing, tips, logistics
+   - Then `reorder_day_assignments` to confirm order
+5. `create_budget_item` — Add budget entries by category
+6. `create_reservation` — Add flight/hotel/restaurant reservations
+7. `create_packing_item` — Build a packing checklist
 
-## Geocoding
+## Finding Places
 
-Use the Google Maps MCP server for geocoding places to get accurate lat/lng coordinates.
+Use a two-step Google Maps MCP lookup for each place:
+1. `maps_search_places` — find the place (returns name, address, lat/lng, place_id, rating)
+2. `maps_place_details` — get full details using the place_id (returns reviews, opening hours, website, phone)
 
-Fallback via curl:
-  source .env && curl -s "https://maps.googleapis.com/maps/api/geocode/json?address=PLACE+NAME&key=$GOOGLE_MAPS_API_KEY"
+Use this data to choose the best places (check ratings, reviews, hours) and to populate `create_place` with accurate name, address, lat, lng, website, and phone.
 
 ## Local JSON Backup Schema
 

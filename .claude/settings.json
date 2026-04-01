@@ -8,14 +8,10 @@
       ]
     },
     "google-maps": {
-      "command": "npx",
+      "command": "bash",
       "args": [
-        "-y",
-        "@modelcontextprotocol/server-google-maps"
-      ],
-      "env": {
-        "GOOGLE_MAPS_API_KEY": "${GOOGLE_MAPS_API_KEY}"
-      }
+        "core/google-maps-mcp.sh"
+      ]
     },
     "trek": {
       "command": "bash",
