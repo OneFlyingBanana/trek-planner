@@ -1,4 +1,8 @@
 #!/bin/bash
+# Load nvm so npx is available in non-interactive shells
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
 # Load TREK config from .env
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 if [ -f "$SCRIPT_DIR/.env" ]; then

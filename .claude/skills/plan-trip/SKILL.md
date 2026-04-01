@@ -55,7 +55,7 @@ Use TREK MCP tools in this order:
 
 Process each day sequentially. For each day, add items in itinerary order.
 
-**Important:** The first item on Day 1 must be the starting location (e.g., home address) created as a place, so TREK can draw the first leg of the journey on the map. Without this geo point, the route starts at the first destination instead of where the traveler actually departs from.
+> **CRITICAL — Starting location:** The FIRST item on Day 1 MUST be the starting location (e.g., home address) created as a place with accurate lat/lng (use `maps_geocode` if needed). Without this geo point, TREK cannot draw the first leg of the journey on the map — the route would start at the first destination instead of where the traveler actually departs from. This is a non-negotiable step.
 
 - For **places**:
   1. `maps_search_places` to find the place (returns address, lat, lng, place_id, rating)
@@ -181,8 +181,10 @@ Present the completed trip with:
 
 ## Tips
 - Always start with `get_trip_summary` when working with an existing trip
+- **Day 1 MUST start with the departure location** (home address) as the first assigned place — never skip this
 - Currency should match the destination (JPY for Japan, EUR for Europe, etc.)
 - Use `maps_search_places` → `maps_place_details` to get full place info (don't geocode manually)
 - Check reviews and ratings via `maps_place_details` when choosing between similar places
 - Budget items should reflect per-person costs when persons > 1
 - Include practical notes: opening hours, prices, local customs, drive times
+- **Traveling with pets:** When travelers have dogs/animals, research pet-friendly accommodations, beaches, trails, and restaurants. Note leash policies, pet fees, and accessibility for pet carriers/strollers
