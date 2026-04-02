@@ -1,17 +1,23 @@
 ---
 name: plan-trip
-description: Plan and create a trip using TREK MCP tools. Use when the user wants to plan a trip, create an itinerary, research destinations, or organize travel logistics.
+description: Research and plan a trip itinerary. Use when the user wants to plan a trip, research destinations, or organize travel logistics. Outputs an approved plan JSON that can be built in TREK with /build-trip.
 ---
 
-# Trip Planner
+# Trip Planner — Research & Plan
 
-Plan and create a trip for: $ARGUMENTS
+Plan a trip for: $ARGUMENTS
 
 ## Critical Directives
 
 **NO SUB-AGENTS:** Do ALL work directly. NEVER use the Agent tool to delegate research, creation, or any other step. You must perform every tool call yourself.
 
-**SEQUENTIAL MCP CALLS:** NEVER call MCP tools in parallel. MCP servers are unreliable under concurrent requests. Execute all MCP tool calls (TREK, Google Maps, Airbnb) one at a time, sequentially.
+**SEQUENTIAL MCP CALLS:** NEVER call MCP tools in parallel. MCP servers are unreliable under concurrent requests. Execute all MCP tool calls (Google Maps, Airbnb) one at a time, sequentially.
+
+**CONTEXT EFFICIENCY:** You are doing research-heavy work. Manage your context carefully:
+- Shortlist candidates using `maps_search_places` ratings BEFORE calling `maps_place_details` — only deep-dive your top 2-3 picks per slot.
+- Group web searches by theme (e.g., one search for "best restaurants in Takayama" rather than one per restaurant).
+- After each research sub-phase, write a brief summary of your findings and decisions. Do not rely on raw API responses staying in context.
+- Drop rejected candidates from consideration immediately — do not carry them forward.
 
 ## Workflow
 
@@ -33,7 +39,7 @@ Collect the following from the user (ask if not provided in arguments):
 
 ### Phase 2 — Research
 
-Do ALL research in this phase. Nothing gets created in TREK until Phase 4.
+Do ALL research in this phase. Build up a running summary of selected places, accommodations, and route info as you go.
 
 #### 2a. Web Research
 Use **WebSearch** to gather:
@@ -43,10 +49,14 @@ Use **WebSearch** to gather:
 - Entry fees, menu price ranges, and activity costs (Google Maps does not provide prices)
 - Pet-friendly options if traveling with animals (accommodations, restaurants, trails, policies)
 
+**After web research:** Write a summary of key findings — best areas, seasonal considerations, price ranges, must-sees. This is your research foundation.
+
 #### 2b. Place Research (Google Maps)
-For each candidate place (attractions, restaurants, hotels, etc.):
-1. `maps_search_places` — find the place (returns name, address, lat/lng, place_id, rating)
-2. `maps_place_details` — get full details using the place_id (returns rating, reviews, opening hours, website, phone)
+
+**Shortlist first, then deep-dive:**
+1. `maps_search_places` — search for candidates in each category (attractions, restaurants, etc.)
+2. Review the search results (name, rating, address) and pick your top 2-3 candidates per slot
+3. `maps_place_details` — get full details ONLY for your shortlisted picks (ratings, reviews, opening hours, website, phone)
 
 **Use ratings and reviews to make informed selections:**
 - Compare candidates by rating — prefer places rated 4.0+
@@ -55,6 +65,8 @@ For each candidate place (attractions, restaurants, hotels, etc.):
 - Cross-reference planned visit times with opening hours — flag conflicts immediately
 
 When choosing between similar places (e.g., two ramen shops near the same area), use the ratings, review quality, and opening hours to pick the best fit for the itinerary.
+
+**After place research:** Summarize your selected places per day with name, address, lat/lng, rating, key notes, and planned visit time.
 
 #### 2c. Accommodation Research (Google Maps + Airbnb)
 Use BOTH sources to find the best accommodation for each stop:
@@ -99,7 +111,7 @@ Use Google Maps to validate the itinerary is realistic:
 Present the full proposed itinerary using this structure:
 
 ```
-## 🗺️ [Trip Title] — Proposed Itinerary
+## [Trip Title] — Proposed Itinerary
 
 **Dates:** [start] → [end] ([N] days)
 **Travelers:** [count]
@@ -110,19 +122,19 @@ Present the full proposed itinerary using this structure:
 ### Day 1: [Title]
 | Time | Activity | Details |
 |------|----------|---------|
-| 09:00 | [Place/Activity] | ⭐ [rating] · [drive time from previous] · [key note] |
+| 09:00 | [Place/Activity] | [rating] · [drive time from previous] · [key note] |
 | ... | ... | ... |
 
-**Accommodation:** [Name] — [price/night] · ⭐ [rating] · [1-line why]
+**Accommodation:** [Name] — [price/night] · [rating] · [1-line why]
 
 *(repeat for each day)*
 
 ---
 
-### 🏨 Accommodation Options
+### Accommodation Options
 For each location, top 3 picks with: price, rating, pros/cons, source (Maps/Airbnb)
 
-### 💰 Budget Estimate
+### Budget Estimate
 | Category | Per Person | Total |
 |----------|-----------|-------|
 | Transport | ... | ... |
@@ -132,7 +144,7 @@ For each location, top 3 picks with: price, rating, pros/cons, source (Maps/Airb
 | Buffer (10%) | ... | ... |
 | **Total** | ... | ... |
 
-### ⚠️ Flagged Issues
+### Flagged Issues
 - [Any long drives, low-rated places, opening hours conflicts, unverified info]
 ```
 
@@ -140,88 +152,133 @@ For each location, top 3 picks with: price, rating, pros/cons, source (Maps/Airb
 
 The user may want to swap places, adjust timing, pick different accommodations, or change the route. Iterate until they are satisfied.
 
-### Phase 4 — Create Trip in TREK
+### Phase 4 — Save Approved Plan
 
-Use TREK MCP tools to build the trip using all pre-researched data.
+After the user approves the itinerary, save the complete plan as JSON to `plans/<destination-year>/<trip_name>.json`.
 
-**Step 1 — Create and configure trip:**
-1. `create_trip` with title, description, start_date, end_date, currency
-2. `get_trip_summary` to retrieve auto-generated day IDs
-3. `update_day` for each day with a descriptive title (e.g., "Day 3: Kusatsu Onsen & Route 292")
+This file is the **handoff artifact** — it must contain everything needed to build the trip in TREK without any further research.
 
-**Step 2 — Build each day (sequentially, in itinerary order):**
-
-> **CRITICAL — Starting location:** The FIRST item on Day 1 MUST be the starting location (e.g., home address) created as a place with accurate lat/lng (use `maps_geocode` if needed). Without this geo point, TREK cannot draw the first leg of the journey on the map.
-
-> **Minimum 2 places per day (when traveling):** Any day that involves moving between locations MUST have at least 2 assigned places so TREK can draw driving routes between them. For travel/driving days, add both departure and arrival places. For overnight stays, add the accommodation as the first place and the next stop as the second. **Exception:** Rest days or days spent entirely in one location (e.g., beach day, resort day, city exploration on foot) can have just 1 place — TREK will show a map marker without a route line, which is correct for stationary days.
-
-For each day, add items in itinerary order:
-- **Places:** `create_place` → `assign_place_to_day` → `update_assignment_time`
-- **Notes:** `create_day_note` for timing, logistics, drive times, tips
-- After all items: `reorder_day_assignments` to confirm correct order
-
-**Step 3 — Add trip details:**
-- `create_budget_item` for each cost category (transport, accommodation, food, activities, buffer ~10%)
-- `create_reservation` for any known bookings; `link_hotel_accommodation` for hotels
-- `create_packing_item` for essential items (documents, gear, clothing)
-- `create_collab_note` for trip-wide logistics (emergency contacts, tips, links)
-
-### Phase 5 — Save Plan Locally
-
-Save a backup JSON in `plans/<destination-year>/<trip_name>.json` using this schema:
+**JSON Schema:**
 
 ```json
 {
   "title": "Trip Title",
-  "description": "Short description",
+  "description": "Short description of the trip",
   "start_date": "YYYY-MM-DD",
   "end_date": "YYYY-MM-DD",
   "currency": "EUR",
+  "travelers": 2,
+  "transport": "rental car",
+  "starting_location": {
+    "name": "Home, Chamoson",
+    "address": "1955 Chamoson, Switzerland",
+    "lat": 46.2017,
+    "lng": 7.2260
+  },
   "days": [
     {
       "day_number": 1,
+      "title": "Day 1: Arrival & Old Town",
       "items": [
         {
           "type": "place",
           "name": "Eiffel Tower",
-          "description": "Iconic iron lattice tower",
+          "description": "Iconic iron lattice tower on the Champ de Mars",
           "address": "Champ de Mars, 5 Av. Anatole France, 75007 Paris",
-          "notes": "Go early to avoid crowds",
           "lat": 48.8584,
-          "lng": 2.2945
+          "lng": 2.2945,
+          "time_start": "09:00",
+          "time_end": "11:00",
+          "notes": "Go early to avoid crowds. Entry: 26 EUR.",
+          "website": "https://www.toureiffel.paris",
+          "phone": "+33 892 70 12 39"
         },
         {
           "type": "note",
-          "text": "Check in to hotel",
-          "time": "14:00",
-          "icon": "hotel"
+          "text": "30 min drive to restaurant",
+          "icon": "car"
         }
-      ]
+      ],
+      "accommodation": {
+        "name": "Hotel & Spa Le Bouclier d'Or",
+        "address": "1 Rue du Bouclier, 67000 Strasbourg",
+        "lat": 48.5850,
+        "lng": 7.7458,
+        "price_per_night": 150,
+        "rating": 4.6,
+        "source": "google_maps",
+        "booking_url": "https://example.com",
+        "notes": "Parking available, breakfast included"
+      }
+    }
+  ],
+  "budget": [
+    {
+      "category": "Transport",
+      "amount": 200,
+      "notes": "Fuel + tolls for 800km total"
+    },
+    {
+      "category": "Accommodation",
+      "amount": 450,
+      "notes": "3 nights at ~150/night"
+    },
+    {
+      "category": "Food",
+      "amount": 300,
+      "notes": "~50/person/day"
+    },
+    {
+      "category": "Activities",
+      "amount": 100,
+      "notes": "Entry fees and tours"
+    },
+    {
+      "category": "Buffer",
+      "amount": 105,
+      "notes": "~10% contingency"
+    }
+  ],
+  "packing": [
+    { "name": "Passport", "category": "Documents" },
+    { "name": "Hiking boots", "category": "Footwear" },
+    { "name": "Rain jacket", "category": "Clothing" }
+  ],
+  "collab_notes": [
+    {
+      "title": "Trip Logistics",
+      "content": "Emergency contacts, check-in times, parking info..."
+    }
+  ],
+  "reservations": [
+    {
+      "type": "hotel",
+      "name": "Hotel & Spa Le Bouclier d'Or",
+      "date": "2026-06-15",
+      "confirmation": "ABC123",
+      "notes": "Check-in 15:00, check-out 11:00"
     }
   ]
 }
 ```
 
-Rules:
+**Rules:**
 - Dates in YYYY-MM-DD format
 - Day numbers sequential from 1
-- Items: `place` (with lat/lng) or `note` (with optional time/icon)
+- All places MUST have lat/lng coordinates
 - Currency matches destination (JPY, EUR, USD, CHF, etc.)
+- Budget amounts are TOTAL (not per person) unless noted
+- Include all data the build skill needs — names, addresses, coordinates, times, notes, websites, phones
 
-### Phase 6 — Present Summary
+After saving, tell the user:
 
-Present the completed trip with:
-- Trip URL on TREK
-- Budget breakdown (per person and total)
-- Day-by-day highlights
-- Key tips and logistics
+> Plan saved to `plans/<path>/<file>.json`. To create this trip in TREK, run: `/build-trip plans/<path>/<file>.json`
 
 ## Tips
-- Always start with `get_trip_summary` when working with an existing trip
-- **Day 1 MUST start with the departure location** (home address) as the first assigned place — never skip this
+- **Day 1 MUST start with the departure location** (home address) as the first item — the build skill needs it for map routing
 - Currency should match the destination (JPY for Japan, EUR for Europe, etc.)
 - Use `maps_search_places` → `maps_place_details` to get full place info (don't geocode manually)
 - Check reviews and ratings via `maps_place_details` when choosing between similar places
-- Budget items should reflect per-person costs when persons > 1
+- Budget items should reflect total costs; note per-person breakdown in the notes field
 - Include practical notes: opening hours, prices, local customs, drive times
-- **Traveling with pets:** When travelers have dogs/animals, research pet-friendly accommodations, beaches, trails, and restaurants. Note leash policies, pet fees, and accessibility for pet carriers/strollers
+- **Traveling with pets:** Research pet-friendly accommodations, beaches, trails, and restaurants. Note leash policies, pet fees, and accessibility
