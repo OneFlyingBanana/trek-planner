@@ -31,6 +31,13 @@ Collect the following from the user (ask if not provided in arguments):
 - **Special interests** (food, nature, culture, adventure, etc.)
 - **Pets** (traveling with animals?)
 
+**Sensible defaults** (use when the user doesn't specify, and mention what you assumed):
+- Budget: mid-range
+- Accommodation: mid-range hotels/apartments
+- Transport: rental car for road trips, public transit for cities
+- Travelers: 1
+- Pets: none
+
 ### Phase 2 — Research
 
 Do ALL research in this phase. Nothing gets created in TREK until Phase 4.
@@ -69,8 +76,8 @@ Use BOTH sources to find the best accommodation for each stop:
 2. `maps_place_details` — get ratings, reviews, website, phone, opening hours for promising results
 
 **Airbnb** — for apartments, houses, unique stays, and self-catered options:
-1. `airbnb_search` — search by location, dates, and number of guests
-2. `airbnb_listing_details` — get full details for promising listings
+1. `airbnb_search` — search by location, dates, and number of guests. **Always pass `ignoreRobotsText: true`**
+2. `airbnb_listing_details` — get full details for promising listings. **Always pass `ignoreRobotsText: true`**
 
 **Compare across both sources by:**
 - Price per night
@@ -88,14 +95,53 @@ Use Google Maps to validate the itinerary is realistic:
 
 **Flag any day with more than 3-4 hours of total driving time.** Suggest splitting long drives or adjusting the itinerary.
 
+#### 2e. Handling Research Failures
+- **Maps search returns no results:** Try broader search terms, nearby city names, or alternative spellings. If still nothing, fall back to WebSearch for the place and use `maps_geocode` with the address.
+- **Airbnb search fails or returns nothing:** Rely on Google Maps hotel search + WebSearch for accommodation options. Note the gap to the user.
+- **Place details unavailable:** Use WebSearch to fill in missing info (hours, website, phone). Note which details are unverified.
+- **Directions fail:** Try with broader waypoints (city center instead of specific address). Estimate drive time from WebSearch if needed.
+
 ### Phase 3 — Present & Approve
 
-Present the full proposed itinerary to the user, including:
-- **Day-by-day plan** with selected places, times, and drive times between stops
-- **Place selections** with ratings, review highlights, and opening hours
-- **Accommodation options** (top 3 per location with price/rating/pros-cons)
-- **Budget estimate** broken down by category
-- **Flagged issues** (long drives, low-rated places, opening hours conflicts, missing info)
+Present the full proposed itinerary using this structure:
+
+```
+## 🗺️ [Trip Title] — Proposed Itinerary
+
+**Dates:** [start] → [end] ([N] days)
+**Travelers:** [count]
+**Transport:** [mode]
+
+---
+
+### Day 1: [Title]
+| Time | Activity | Details |
+|------|----------|---------|
+| 09:00 | [Place/Activity] | ⭐ [rating] · [drive time from previous] · [key note] |
+| ... | ... | ... |
+
+**Accommodation:** [Name] — [price/night] · ⭐ [rating] · [1-line why]
+
+*(repeat for each day)*
+
+---
+
+### 🏨 Accommodation Options
+For each location, top 3 picks with: price, rating, pros/cons, source (Maps/Airbnb)
+
+### 💰 Budget Estimate
+| Category | Per Person | Total |
+|----------|-----------|-------|
+| Transport | ... | ... |
+| Accommodation | ... | ... |
+| Food | ... | ... |
+| Activities | ... | ... |
+| Buffer (10%) | ... | ... |
+| **Total** | ... | ... |
+
+### ⚠️ Flagged Issues
+- [Any long drives, low-rated places, opening hours conflicts, unverified info]
+```
 
 **STOP. Wait for user feedback and approval before proceeding to Phase 4.**
 
@@ -103,49 +149,28 @@ The user may want to swap places, adjust timing, pick different accommodations, 
 
 ### Phase 4 — Create Trip in TREK
 
-Use TREK MCP tools in this order, using all the data gathered in Phase 2:
+Use TREK MCP tools to build the trip using all pre-researched data.
 
-**Step 1 — Create trip:**
-- `create_trip` with title, description, start_date, end_date, currency
+**Step 1 — Create and configure trip:**
+1. `create_trip` with title, description, start_date, end_date, currency
+2. `get_trip_summary` to retrieve auto-generated day IDs
+3. `update_day` for each day with a descriptive title (e.g., "Day 3: Kusatsu Onsen & Route 292")
 
-**Step 2 — Get trip context:**
-- `get_trip_summary` to retrieve the trip with auto-generated day IDs
+**Step 2 — Build each day (sequentially, in itinerary order):**
 
-**Step 3 — Set day titles:**
-- `update_day` to give each day a descriptive title (e.g., "Day 3: Kusatsu Onsen & Route 292")
+> **CRITICAL — Starting location:** The FIRST item on Day 1 MUST be the starting location (e.g., home address) created as a place with accurate lat/lng (use `maps_geocode` if needed). Without this geo point, TREK cannot draw the first leg of the journey on the map.
 
-**Step 4 — Build each day (places and notes in order):**
+> **CRITICAL — Minimum 2 places per day:** Every day MUST have at least 2 assigned places so TREK can draw driving routes between them. For travel/driving days, add both departure and arrival places. For overnight stays, add the accommodation as the first place and the next stop as the second.
 
-Process each day sequentially. For each day, add items in itinerary order.
+For each day, add items in itinerary order:
+- **Places:** `create_place` → `assign_place_to_day` → `update_assignment_time`
+- **Notes:** `create_day_note` for timing, logistics, drive times, tips
+- After all items: `reorder_day_assignments` to confirm correct order
 
-> **CRITICAL — Starting location:** The FIRST item on Day 1 MUST be the starting location (e.g., home address) created as a place with accurate lat/lng (use `maps_geocode` if needed). Without this geo point, TREK cannot draw the first leg of the journey on the map — the route would start at the first destination instead of where the traveler actually departs from. This is a non-negotiable step.
-
-- For **places**:
-  1. `create_place` with all pre-researched data (name, address, lat, lng, website, phone, description)
-  2. `assign_place_to_day` to link to the current day
-  3. `update_assignment_time` to set visit start/end times
-- For **notes** (timing, logistics, drive times, tips):
-  - `create_day_note` with text, time, and icon
-
-After all items for a day are added:
-- `reorder_day_assignments` to confirm the correct order within the day
-
-**Step 5 — Add budget items:**
-- `create_budget_item` for each cost category:
-  - Transport (flights, car rental, fuel, tolls)
-  - Accommodation (hotels, Airbnb, hostels)
-  - Food & drinks
-  - Activities & attractions
-  - Miscellaneous & buffer (~10%)
-
-**Step 6 — Add reservations (if known):**
-- `create_reservation` for flights, hotels, restaurants, activities
-- `link_hotel_accommodation` to connect hotel reservations to check-in/check-out days
-
-**Step 7 — Create packing list:**
-- `create_packing_item` for essential items (documents, gear, clothing, etc.)
-
-**Step 8 — Add collaborative notes:**
+**Step 3 — Add trip details:**
+- `create_budget_item` for each cost category (transport, accommodation, food, activities, buffer ~10%)
+- `create_reservation` for any known bookings; `link_hotel_accommodation` for hotels
+- `create_packing_item` for essential items (documents, gear, clothing)
 - `create_collab_note` for trip-wide logistics (emergency contacts, tips, links)
 
 ### Phase 5 — Save Plan Locally
@@ -197,93 +222,6 @@ Present the completed trip with:
 - Budget breakdown (per person and total)
 - Day-by-day highlights
 - Key tips and logistics
-
-## TREK MCP Tools Reference (34 tools)
-
-### Trip Management
-| Tool | Description |
-|:---|:---|
-| `create_trip` | Create a new trip (returns trip with generated days) |
-| `update_trip` | Update trip details |
-| `delete_trip` | Delete a trip (owner only) |
-| `list_trips` | List all trips you own or are a member of |
-| `get_trip_summary` | Full denormalized trip summary in one call |
-
-### Places & Locations
-| Tool | Description |
-|:---|:---|
-| `create_place` | Add a place/POI to a trip |
-| `update_place` | Update an existing place |
-| `delete_place` | Remove a place from a trip |
-
-### Day Assignments
-| Tool | Description |
-|:---|:---|
-| `assign_place_to_day` | Assign a place to a specific day |
-| `unassign_place` | Remove a place from a day |
-| `reorder_day_assignments` | Reorder places within a day |
-| `update_assignment_time` | Set start/end time for a place visit |
-| `update_day` | Set a day's title |
-
-### Budget
-| Tool | Description |
-|:---|:---|
-| `create_budget_item` | Add a budget/expense item |
-| `update_budget_item` | Update a budget item |
-| `delete_budget_item` | Remove a budget item |
-
-### Packing
-| Tool | Description |
-|:---|:---|
-| `create_packing_item` | Add item to packing checklist |
-| `update_packing_item` | Rename or recategorize a packing item |
-| `toggle_packing_item` | Check/uncheck a packing item |
-| `delete_packing_item` | Remove a packing item |
-
-### Reservations
-| Tool | Description |
-|:---|:---|
-| `create_reservation` | Add a reservation (flight, hotel, restaurant, etc.) |
-| `update_reservation` | Update a reservation |
-| `delete_reservation` | Remove a reservation |
-| `link_hotel_accommodation` | Link hotel to check-in/check-out days |
-
-### Notes
-| Tool | Description |
-|:---|:---|
-| `create_day_note` | Add a note to a specific day |
-| `update_day_note` | Edit a day note |
-| `delete_day_note` | Remove a day note |
-| `create_collab_note` | Create a shared trip note |
-| `update_collab_note` | Edit a collaborative note |
-| `delete_collab_note` | Remove a collaborative note |
-
-### Personal Travel
-| Tool | Description |
-|:---|:---|
-| `create_bucket_list_item` | Add to your travel bucket list |
-| `delete_bucket_list_item` | Remove from bucket list |
-| `mark_country_visited` | Mark a country as visited (Atlas) |
-| `unmark_country_visited` | Remove from visited countries |
-
-## Google Maps MCP Tools Reference (7 tools)
-
-| Tool | Description |
-|:---|:---|
-| `maps_search_places` | Search for places — returns name, address, lat/lng, place_id, rating |
-| `maps_place_details` | Get full details for a place_id — reviews, opening hours, website, phone |
-| `maps_directions` | Get directions between two points |
-| `maps_distance_matrix` | Calculate travel distance and time for multiple origin/destination pairs |
-| `maps_geocode` | Convert an address to coordinates (prefer `maps_search_places` instead) |
-| `maps_reverse_geocode` | Convert coordinates to an address |
-| `maps_elevation` | Get elevation data for locations |
-
-## Airbnb MCP Tools Reference (2 tools)
-
-| Tool | Description |
-|:---|:---|
-| `airbnb_search` | Search listings by location, dates, guests, price range |
-| `airbnb_listing_details` | Get full details for a specific listing |
 
 ## Tips
 - Always start with `get_trip_summary` when working with an existing trip
