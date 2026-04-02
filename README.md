@@ -8,7 +8,7 @@ Tell Claude what kind of trip you want, and it will research destinations, build
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
 - A [TREK](https://github.com/mauriceboe/TREK) instance with the MCP addon enabled
-- [Node.js](https://nodejs.org/) (for MCP server packages)
+- [Node.js](https://nodejs.org/) 22+ (for MCP server packages) — use [nvm](https://github.com/nvm-sh/nvm) to manage versions
 - A [Google Maps API key](https://console.cloud.google.com/) (for place search, details, directions)
 
 ## Setup
@@ -19,6 +19,12 @@ Tell Claude what kind of trip you want, and it will research destinations, build
 git clone <repo-url>
 cd trek-planner
 cp .env.example .env
+```
+
+If you use [nvm](https://github.com/nvm-sh/nvm), the `.nvmrc` will automatically select the right Node version:
+
+```bash
+nvm install
 ```
 
 Edit `.env` and fill in your values:
@@ -34,13 +40,21 @@ GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 - `TREK_MCP_TOKEN` — In TREK: Admin Panel → Addons → enable MCP, then Settings → MCP Configuration → generate token
 - `GOOGLE_MAPS_API_KEY` — [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
 
-### 2. Start Claude Code
+### 2. Register MCP servers
+
+```bash
+./setup-mcp.sh
+```
+
+This registers the three MCP servers (TREK, Google Maps, Airbnb) with Claude Code. You only need to run this once after cloning.
+
+### 3. Start Claude Code
 
 ```bash
 claude
 ```
 
-The MCP servers are pre-configured in `.claude/settings.json` and connect automatically when Claude Code starts from this directory.
+The MCP servers connect automatically when Claude Code starts from this directory.
 
 ## Usage
 
@@ -84,6 +98,16 @@ Three MCP servers are configured in `.claude/settings.json`:
 
 In Claude Code, type `/mcp` to see the status of all MCP servers. All three should show as connected.
 
+### TREK MCP hangs or stops responding
+
+The TREK MCP server accepts a limited number of connections. If it becomes unresponsive (tools time out or hang indefinitely), restart the TREK Docker container:
+
+```bash
+docker restart <your-trek-container>
+```
+
+This is the only way to reset the connections for now.
+
 ### TREK tools not appearing
 
 If TREK tools aren't available after starting Claude Code:
@@ -91,7 +115,7 @@ If TREK tools aren't available after starting Claude Code:
 1. **Check your `.env`** — make sure `TREK_URL` and `TREK_MCP_TOKEN` are set correctly
 2. **Test the connection manually:**
    ```bash
-   bash core/trek-mcp.sh
+   ./core/trek-mcp.sh
    ```
    This should start without errors. Press `Ctrl+C` to stop it.
 3. **Verify TREK MCP addon is enabled** — In TREK: Admin Panel → Addons → MCP should be toggled on
@@ -104,7 +128,7 @@ If Google Maps tools aren't available after starting Claude Code:
 1. **Check your `.env`** — make sure `GOOGLE_MAPS_API_KEY` is set
 2. **Test the connection manually:**
    ```bash
-   bash core/google-maps-mcp.sh
+   ./core/google-maps-mcp.sh
    ```
    This should start without errors. Press `Ctrl+C` to stop it.
 3. **Enable the required APIs** in [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services:
@@ -114,7 +138,7 @@ If Google Maps tools aren't available after starting Claude Code:
 
 ### Node.js errors
 
-The MCP servers require Node.js and `npx`. Install from [nodejs.org](https://nodejs.org/) (LTS version recommended).
+The MCP servers require Node.js 22+ and `npx`. If you use nvm, run `nvm install` from the project root — the `.nvmrc` pins the correct version. Both MCP launcher scripts load nvm automatically so `npx` is available even in non-interactive shells.
 
 ## Project Structure
 
