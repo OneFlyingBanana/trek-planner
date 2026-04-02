@@ -58,7 +58,9 @@ The MCP servers connect automatically when Claude Code starts from this director
 
 ## Usage
 
-Use the `/plan-trip` command in Claude Code:
+### Planning a trip
+
+Use `/plan-trip` in Claude Code to research and plan an itinerary:
 
 ```
 /plan-trip 2 weeks in Japan, scenic driving and onsens, budget 3-4k CHF per person
@@ -74,13 +76,29 @@ Use the `/plan-trip` command in Claude Code:
 
 You can also just describe what you want in natural language — Claude will use the trip planning skill automatically.
 
-### What happens
+`/plan-trip` will:
+1. Gather your requirements (starting point, destination, dates, budget, interests)
+2. Research destinations, routes, activities, and pricing via web search
+3. Look up places via Google Maps (ratings, reviews, opening hours, directions)
+4. Search Airbnb and hotel options for accommodation
+5. Present a full itinerary for your approval — iterate until you're happy
+6. Save the approved plan as a JSON file in `plans/`
 
-1. Claude gathers your requirements (starting point, destination, dates, budget, interests)
-2. Researches destinations, routes, activities, and pricing via web search
-3. Looks up places via Google Maps (ratings, reviews, opening hours, directions)
-4. Creates the full trip in TREK with places, day assignments, budget, packing list, reservations, and notes
-5. Saves a local JSON backup in `plans/`
+### Building the trip in TREK
+
+Once you've approved a plan, use `/build-trip` to create it in your TREK instance:
+
+```
+/build-trip plans/japan-2026/japan_road_trip.json
+```
+
+`/build-trip` will:
+1. Read and validate the plan JSON
+2. Check if the trip already exists in TREK (for recovery after interruptions)
+3. Create the trip with all places, day assignments, budget, packing list, reservations, and notes
+4. Present a summary with the trip URL
+
+The two-step flow (`/plan-trip` → `/build-trip`) keeps each step focused and prevents context overflow on longer trips. Research and TREK creation run in separate conversations, so even a 2-week itinerary won't run out of steam.
 
 ## MCP Servers
 
@@ -144,11 +162,12 @@ The MCP servers require Node.js 22+ and `npx`. If you use nvm, run `nvm install`
 
 ```
 .claude/
-  settings.json               # MCP server configurations (auto-loaded by Claude Code)
-  skills/plan-trip/SKILL.md   # The /plan-trip skill
+  settings.json                # MCP server configurations (auto-loaded by Claude Code)
+  skills/plan-trip/SKILL.md    # /plan-trip — research & plan an itinerary
+  skills/build-trip/SKILL.md   # /build-trip — create a planned trip in TREK
 core/
-  trek-mcp.sh                 # TREK MCP server launcher (reads config from .env)
-  google-maps-mcp.sh          # Google Maps MCP server launcher (reads API key from .env)
-  system_prompt.txt           # Trip creation workflow and JSON backup schema
-plans/                        # Local trip backups (gitignored)
+  trek-mcp.sh                  # TREK MCP server launcher (reads config from .env)
+  google-maps-mcp.sh           # Google Maps MCP server launcher (reads API key from .env)
+  system_prompt.txt            # Trip creation workflow and JSON backup schema
+plans/                         # Local trip plan JSONs (gitignored)
 ```
