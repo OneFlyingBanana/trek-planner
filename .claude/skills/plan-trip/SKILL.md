@@ -7,11 +7,17 @@ description: Plan and create a trip using TREK MCP tools. Use when the user want
 
 Plan and create a trip for: $ARGUMENTS
 
+## Critical Directives
+
+**NO SUB-AGENTS:** Do ALL work directly. NEVER use the Agent tool to delegate research, creation, or any other step. You must perform every tool call yourself.
+
+**SEQUENTIAL MCP CALLS:** NEVER call MCP tools in parallel. MCP servers are unreliable under concurrent requests. Execute all MCP tool calls (TREK, Google Maps, Airbnb) one at a time, sequentially.
+
 ## Workflow
 
-Follow these steps in order. Present findings to the user before proceeding at each stage.
+Follow these phases in order. Complete each phase fully before moving to the next.
 
-### 1. Gather Requirements
+### Phase 1 — Gather Requirements
 
 Collect the following from the user (ask if not provided in arguments):
 - **Starting location** (home address or departure point — needed for the first leg of the journey)
@@ -23,24 +29,81 @@ Collect the following from the user (ask if not provided in arguments):
 - **Accommodation style** (budget, mid-range, luxury, mix)
 - **Transport** (rental car, public transit, etc.)
 - **Special interests** (food, nature, culture, adventure, etc.)
+- **Pets** (traveling with animals?)
 
-### 2. Research
+### Phase 2 — Research
 
-Use available tools to research:
-- **WebSearch**: Destinations, seasonal info, scenic routes, activities, flight prices
-- **Google Maps MCP**:
-  - `maps_search_places` — find places, get ratings and place IDs
-  - `maps_place_details` — get reviews, opening hours, website, phone number (use the `place_id` from search results)
-  - `maps_directions` / `maps_distance_matrix` — drive times, routes between stops
-- **Airbnb MCP**: Search accommodation options and pricing
+Do ALL research in this phase. Nothing gets created in TREK until Phase 4.
 
-When comparing candidate places (restaurants, activities, etc.), use `maps_place_details` to check ratings, reviews, and opening hours to help choose the best options.
+#### 2a. Web Research
+Use **WebSearch** to gather:
+- Destination overviews, seasonal info, local events during travel dates
+- Scenic routes and must-see attractions
+- Flight/transport prices and options
+- Entry fees, menu price ranges, and activity costs (Google Maps does not provide prices)
+- Pet-friendly options if traveling with animals (accommodations, restaurants, trails, policies)
 
-Present a proposed itinerary outline to the user for feedback before building.
+#### 2b. Place Research (Google Maps)
+For each candidate place (attractions, restaurants, hotels, etc.):
+1. `maps_search_places` — find the place (returns name, address, lat/lng, place_id, rating)
+2. `maps_place_details` — get full details using the place_id (returns rating, reviews, opening hours, website, phone)
 
-### 3. Create Trip in TREK
+**Use ratings and reviews to make informed selections:**
+- Compare candidates by rating — prefer places rated 4.0+
+- Flag any place with rating below 4.0 or with concerning review patterns (recent negative trends, safety issues, closures mentioned)
+- Read review text for practical tips (best time to visit, what to order, things to avoid)
+- Cross-reference planned visit times with opening hours — flag conflicts immediately
 
-Use TREK MCP tools in this order:
+When choosing between similar places (e.g., two ramen shops near the same area), use the ratings, review quality, and opening hours to pick the best fit for the itinerary.
+
+#### 2c. Accommodation Research (Google Maps + Airbnb)
+Use BOTH sources to find the best accommodation for each stop:
+
+**WebSearch** — for pricing, availability, booking platforms, and accommodation guides:
+- Search for accommodation options, price comparisons, and "best places to stay in [location]" guides
+- Find prices that Google Maps doesn't provide (room rates, seasonal pricing, deals)
+- Discover accommodation types specific to the destination (e.g., ryokans, riads, agriturismos)
+
+**Google Maps** — for hotels, hostels, ryokans, B&Bs, and other traditional accommodations:
+1. `maps_search_places` — search for accommodation near the area (e.g., "hotels near Takayama station")
+2. `maps_place_details` — get ratings, reviews, website, phone, opening hours for promising results
+
+**Airbnb** — for apartments, houses, unique stays, and self-catered options:
+1. `airbnb_search` — search by location, dates, and number of guests
+2. `airbnb_listing_details` — get full details for promising listings
+
+**Compare across both sources by:**
+- Price per night
+- Rating and number of reviews
+- Location proximity to planned activities
+- Amenities (parking, kitchen, wifi, washer, pet-friendly if applicable)
+- Accommodation type fit (e.g., ryokan for a cultural experience, apartment for a longer stay)
+
+Select the top 3 options to present to the user with pros/cons for each. The best picks may be a mix of Google Maps and Airbnb results.
+
+#### 2d. Route & Drive Time Research
+Use Google Maps to validate the itinerary is realistic:
+- `maps_directions` — get routes between consecutive stops
+- `maps_distance_matrix` — calculate travel times for multiple legs efficiently
+
+**Flag any day with more than 3-4 hours of total driving time.** Suggest splitting long drives or adjusting the itinerary.
+
+### Phase 3 — Present & Approve
+
+Present the full proposed itinerary to the user, including:
+- **Day-by-day plan** with selected places, times, and drive times between stops
+- **Place selections** with ratings, review highlights, and opening hours
+- **Accommodation options** (top 3 per location with price/rating/pros-cons)
+- **Budget estimate** broken down by category
+- **Flagged issues** (long drives, low-rated places, opening hours conflicts, missing info)
+
+**STOP. Wait for user feedback and approval before proceeding to Phase 4.**
+
+The user may want to swap places, adjust timing, pick different accommodations, or change the route. Iterate until they are satisfied.
+
+### Phase 4 — Create Trip in TREK
+
+Use TREK MCP tools in this order, using all the data gathered in Phase 2:
 
 **Step 1 — Create trip:**
 - `create_trip` with title, description, start_date, end_date, currency
@@ -58,11 +121,9 @@ Process each day sequentially. For each day, add items in itinerary order.
 > **CRITICAL — Starting location:** The FIRST item on Day 1 MUST be the starting location (e.g., home address) created as a place with accurate lat/lng (use `maps_geocode` if needed). Without this geo point, TREK cannot draw the first leg of the journey on the map — the route would start at the first destination instead of where the traveler actually departs from. This is a non-negotiable step.
 
 - For **places**:
-  1. `maps_search_places` to find the place (returns address, lat, lng, place_id, rating)
-  2. `maps_place_details` with the `place_id` to get website, phone, opening hours, reviews
-  3. `create_place` with all the collected data (name, address, lat, lng, website, phone, description)
-  4. `assign_place_to_day` to link to the current day
-  5. `update_assignment_time` to set visit start/end times
+  1. `create_place` with all pre-researched data (name, address, lat, lng, website, phone, description)
+  2. `assign_place_to_day` to link to the current day
+  3. `update_assignment_time` to set visit start/end times
 - For **notes** (timing, logistics, drive times, tips):
   - `create_day_note` with text, time, and icon
 
@@ -72,7 +133,7 @@ After all items for a day are added:
 **Step 5 — Add budget items:**
 - `create_budget_item` for each cost category:
   - Transport (flights, car rental, fuel, tolls)
-  - Accommodation (hotels, ryokans, hostels)
+  - Accommodation (hotels, Airbnb, hostels)
   - Food & drinks
   - Activities & attractions
   - Miscellaneous & buffer (~10%)
@@ -87,11 +148,49 @@ After all items for a day are added:
 **Step 8 — Add collaborative notes:**
 - `create_collab_note` for trip-wide logistics (emergency contacts, tips, links)
 
-### 4. Save Plan Locally
+### Phase 5 — Save Plan Locally
 
-Save a backup JSON in `plans/<destination-year>/<trip_name>.json` using the schema from `core/system_prompt.txt`.
+Save a backup JSON in `plans/<destination-year>/<trip_name>.json` using this schema:
 
-### 5. Present Summary
+```json
+{
+  "title": "Trip Title",
+  "description": "Short description",
+  "start_date": "YYYY-MM-DD",
+  "end_date": "YYYY-MM-DD",
+  "currency": "EUR",
+  "days": [
+    {
+      "day_number": 1,
+      "items": [
+        {
+          "type": "place",
+          "name": "Eiffel Tower",
+          "description": "Iconic iron lattice tower",
+          "address": "Champ de Mars, 5 Av. Anatole France, 75007 Paris",
+          "notes": "Go early to avoid crowds",
+          "lat": 48.8584,
+          "lng": 2.2945
+        },
+        {
+          "type": "note",
+          "text": "Check in to hotel",
+          "time": "14:00",
+          "icon": "hotel"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Rules:
+- Dates in YYYY-MM-DD format
+- Day numbers sequential from 1
+- Items: `place` (with lat/lng) or `note` (with optional time/icon)
+- Currency matches destination (JPY, EUR, USD, CHF, etc.)
+
+### Phase 6 — Present Summary
 
 Present the completed trip with:
 - Trip URL on TREK
@@ -178,6 +277,13 @@ Present the completed trip with:
 | `maps_geocode` | Convert an address to coordinates (prefer `maps_search_places` instead) |
 | `maps_reverse_geocode` | Convert coordinates to an address |
 | `maps_elevation` | Get elevation data for locations |
+
+## Airbnb MCP Tools Reference (2 tools)
+
+| Tool | Description |
+|:---|:---|
+| `airbnb_search` | Search listings by location, dates, guests, price range |
+| `airbnb_listing_details` | Get full details for a specific listing |
 
 ## Tips
 - Always start with `get_trip_summary` when working with an existing trip
