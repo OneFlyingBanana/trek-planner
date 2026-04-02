@@ -153,7 +153,7 @@ Use TREK MCP tools to build the trip using all pre-researched data.
 
 > **CRITICAL — Starting location:** The FIRST item on Day 1 MUST be the starting location (e.g., home address) created as a place with accurate lat/lng (use `maps_geocode` if needed). Without this geo point, TREK cannot draw the first leg of the journey on the map.
 
-> **CRITICAL — Minimum 2 places per day:** Every day MUST have at least 2 assigned places so TREK can draw driving routes between them. For travel/driving days, add both departure and arrival places. For overnight stays, add the accommodation as the first place and the next stop as the second.
+> **Minimum 2 places per day (when traveling):** Any day that involves moving between locations MUST have at least 2 assigned places so TREK can draw driving routes between them. For travel/driving days, add both departure and arrival places. For overnight stays, add the accommodation as the first place and the next stop as the second. **Exception:** Rest days or days spent entirely in one location (e.g., beach day, resort day, city exploration on foot) can have just 1 place — TREK will show a map marker without a route line, which is correct for stationary days.
 
 For each day, add items in itinerary order:
 - **Places:** `create_place` → `assign_place_to_day` → `update_assignment_time`
