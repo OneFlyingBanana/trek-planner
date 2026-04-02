@@ -31,13 +31,6 @@ Collect the following from the user (ask if not provided in arguments):
 - **Special interests** (food, nature, culture, adventure, etc.)
 - **Pets** (traveling with animals?)
 
-**Sensible defaults** (use when the user doesn't specify, and mention what you assumed):
-- Budget: mid-range
-- Accommodation: mid-range hotels/apartments
-- Transport: rental car for road trips, public transit for cities
-- Travelers: 1
-- Pets: none
-
 ### Phase 2 — Research
 
 Do ALL research in this phase. Nothing gets created in TREK until Phase 4.
