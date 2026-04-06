@@ -75,6 +75,44 @@ Present the completed trip with:
 - Day-by-day highlights (title + number of places)
 - Any items that were skipped (already existed) or failed (with error details)
 
+### Phase 5 — Offer Route Detailing (Driving Trips Only)
+
+**Skip this phase entirely if the trip does not involve driving** (e.g., public transit, flights only, city walks).
+
+If the trip involves driving between locations (rental car, road trip, etc.), offer the user the option to add detailed waypoints along driving segments. This makes TREK show a step-by-step route through scenic stops instead of just start/end points.
+
+Present this to the user:
+
+> **Route detailing available:** This trip has driving segments that could benefit from detailed waypoints (viewpoints, scenic stops, roadside stations) along each route. This helps TREK show the exact path you'll drive.
+>
+> To add detailed route waypoints, paste this prompt into a fresh conversation:
+
+Then generate a handoff prompt using this template (fill in the actual values):
+
+~~~
+I need you to add detailed driving waypoints to my trip in TREK.
+
+**Trip ID:** [trip_id]
+**Plan file:** [path to plan JSON]
+
+Load the trip with `get_trip_summary` (trip ID [trip_id]) to see the current state. For each driving segment between stops, research whether there are notable waypoints DIRECTLY ON THE ROUTE (viewpoints, scenic stops, roadside stations, landmarks) that would add value. Only add stops you are confident are on the route — no detours unless flagged as such.
+
+For each waypoint found:
+1. `create_place` with accurate name, description, lat/lng, google_place_id, and category
+2. `assign_place_to_day` to the correct day
+3. `update_assignment_time` with realistic times
+4. Update the day note to reflect the new stops
+
+Skip segments that are:
+- Short urban drives (under 30 min)
+- Already have detailed waypoints
+- Flat expressway with no scenic alternative
+
+Focus on segments where stops genuinely improve the route visibility on the map and the driving experience.
+~~~
+
+**Do not perform the route detailing yourself.** The research is context-heavy and best handled in a fresh conversation that can dedicate its full context to it.
+
 ## Tips
 - Always start with `get_trip_summary` when working with an existing trip
 - **Day 1 MUST start with the departure location** as the first assigned place — never skip this
