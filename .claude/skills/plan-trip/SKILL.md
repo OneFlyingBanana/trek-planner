@@ -23,19 +23,51 @@ Plan a trip for: $ARGUMENTS
 
 Follow these phases in order. Complete each phase fully before moving to the next.
 
-### Phase 1 — Gather Requirements
+### Phase 1 — Gather Requirements (Interactive)
 
-Collect the following from the user (ask if not provided in arguments):
-- **Starting location** (home address or departure point — needed for the first leg of the journey)
-- **Destination(s)** and general interests
-- **Duration** (number of days)
-- **Travel dates** (or preferred season)
-- **Budget** (per person, currency)
-- **Number of travelers**
-- **Accommodation style** (budget, mid-range, luxury, mix)
-- **Transport** (rental car, public transit, etc.)
-- **Special interests** (food, nature, culture, adventure, etc.)
-- **Pets** (traveling with animals?)
+**DO NOT proceed to Phase 2 until ALL requirements below are confirmed by the user.**
+
+First, extract any information already provided in the user's initial prompt. Then use `AskUserQuestion` to collect anything missing. Group related questions together to minimize rounds (max 4 questions per call).
+
+**Required information:**
+
+| # | Field | How to ask |
+|---|-------|-----------|
+| 1 | **Destination(s)** | Open-ended. If user already stated it, confirm. |
+| 2 | **Travel dates** | Open-ended (exact dates or "flexible in [month]"). |
+| 3 | **Duration** | Open-ended if not derivable from dates. |
+| 4 | **Number of travelers** | Open-ended. |
+| 5 | **Starting location** | Open-ended (home address or departure city — needed for first leg routing). |
+| 6 | **Budget** | Open-ended (per person, total, or range — specify currency). |
+| 7 | **Accommodation style** | `AskUserQuestion` with options: Budget / Mid-range / Luxury / Mix |
+| 8 | **Transport** | `AskUserQuestion` with options: Rental car / Public transit / Walking + transit / Mix |
+| 9 | **Special interests** | `AskUserQuestion` multiSelect with options: Food & dining / Nature & outdoors / Culture & history / Adventure & sports. User can add custom via "Other". |
+| 10 | **Pets** | `AskUserQuestion` with options: No pets / Yes — traveling with dog / Yes — traveling with cat |
+
+**Flow:**
+
+1. Parse the user's initial prompt and list what's already known.
+2. **Round 1:** Ask all open-ended missing fields (1-6) in a single message. Just list them as bullet points — don't use AskUserQuestion for free-text fields.
+3. **Round 2:** Use `AskUserQuestion` for the remaining choice-based fields (7-10) that weren't provided. Batch up to 4 questions per call.
+4. **Confirmation:** Present a summary of all gathered requirements and ask the user to confirm before proceeding:
+
+```
+## Trip Requirements — Please Confirm
+
+- **Destination:** [X]
+- **Dates:** [X] → [X] ([N] days)
+- **Travelers:** [N]
+- **Starting from:** [X]
+- **Budget:** [X] per person / [X] total
+- **Accommodation:** [X]
+- **Transport:** [X]
+- **Interests:** [X, Y, Z]
+- **Pets:** [X]
+
+Does this look correct? (Reply to confirm or correct anything)
+```
+
+**NEVER assume or fill in missing information with defaults.** If the user doesn't answer a question, ask again. Every field must have an explicit user-provided value.
 
 ### Phase 2 — Research
 
@@ -73,8 +105,9 @@ Use BOTH sources to find the best accommodation for each stop:
 
 **WebSearch** — for pricing, availability, booking platforms, and accommodation guides:
 - Search for accommodation options, price comparisons, and "best places to stay in [location]" guides
-- Find prices that Google Maps doesn't provide (room rates, seasonal pricing, deals)
+- Find **per-night pricing** for each shortlisted hotel — this is critical for accurate budgeting
 - Discover accommodation types specific to the destination (e.g., ryokans, riads, agriturismos)
+- Cross-check prices across Booking.com, Expedia, official sites for the actual travel dates
 
 **Google Maps** — for hotels, hostels, ryokans, B&Bs, and other traditional accommodations:
 1. `maps_search_places` — search for accommodation near the area (e.g., "hotels near Takayama station")
@@ -92,6 +125,10 @@ Use BOTH sources to find the best accommodation for each stop:
 - Accommodation type fit (e.g., ryokan for a cultural experience, apartment for a longer stay)
 
 Select the top 3 options to present to the user with pros/cons for each. The best picks may be a mix of Google Maps and Airbnb results.
+
+**Per-hotel pricing is mandatory:** Each accommodation MUST have a researched per-night price. Do NOT output a single lump-sum accommodation budget line — the budget must have one entry per hotel with the actual nightly rate x number of nights. This ensures the budget is accurate and auditable.
+
+**Multi-night stays:** When the itinerary stays at the same hotel for consecutive nights, represent it as a single accommodation entry with `check_in_day` and `check_out_day` spanning the full stay. Do not duplicate entries per night.
 
 #### 2d. Route & Drive Time Research
 Use Google Maps to validate the itinerary is realistic:
@@ -125,24 +162,34 @@ Present the full proposed itinerary using this structure:
 | 09:00 | [Place/Activity] | [rating] · [drive time from previous] · [key note] |
 | ... | ... | ... |
 
-**Accommodation:** [Name] — [price/night] · [rating] · [1-line why]
+**Stay:** [Hotel Name] (check-in [time])
 
 *(repeat for each day)*
 
 ---
 
-### Accommodation Options
-For each location, top 3 picks with: price, rating, pros/cons, source (Maps/Airbnb)
+### Accommodations
+| Night(s) | Hotel | Per Night | Nights | Total | Parking | Notes |
+|----------|-------|-----------|--------|-------|---------|-------|
+| 1 | Hotel Name | 150 | 1 | 150 | Free | Rating 4.6, breakfast included |
+| 2-3 | Ryokan Name | 300 | 2 | 600 | Free | Includes meals, onsen |
+| ... | ... | ... | ... | ... | ... | ... |
+
+For each location, present top 3 options with: price/night, rating, pros/cons, source (Maps/Airbnb). Let the user pick.
 
 ### Budget Estimate
-| Category | Per Person | Total |
-|----------|-----------|-------|
-| Transport | ... | ... |
-| Accommodation | ... | ... |
-| Food | ... | ... |
-| Activities | ... | ... |
-| Buffer (10%) | ... | ... |
-| **Total** | ... | ... |
+| Category | Item | Total |
+|----------|------|-------|
+| Accommodation | Hotel Name (X nights) | ... |
+| Accommodation | Ryokan Name (X nights) | ... |
+| Transport | Flights | ... |
+| Transport | Car rental | ... |
+| Transport | Fuel + tolls | ... |
+| Food | Food & drinks (X days, X persons) | ... |
+| Activities | Entry fees | ... |
+| Other | Miscellaneous + buffer | ... |
+| **TOTAL** | | **...** |
+| **Per person** | | **...** |
 
 ### Flagged Issues
 - [Any long drives, low-rated places, opening hours conflicts, unverified info]
@@ -198,43 +245,57 @@ This file is the **handoff artifact** — it must contain everything needed to b
           "text": "30 min drive to restaurant",
           "icon": "car"
         }
-      ],
-      "accommodation": {
-        "name": "Hotel & Spa Le Bouclier d'Or",
-        "address": "1 Rue du Bouclier, 67000 Strasbourg",
-        "lat": 48.5850,
-        "lng": 7.7458,
-        "price_per_night": 150,
-        "rating": 4.6,
-        "source": "google_maps",
-        "booking_url": "https://example.com",
-        "notes": "Parking available, breakfast included"
-      }
+      ]
+    }
+  ],
+  "accommodations": [
+    {
+      "name": "Hotel & Spa Le Bouclier d'Or",
+      "address": "1 Rue du Bouclier, 67000 Strasbourg",
+      "lat": 48.5850,
+      "lng": 7.7458,
+      "check_in_day": 1,
+      "check_out_day": 3,
+      "check_in_time": "15:00",
+      "check_out_time": "11:00",
+      "price_per_night": 150,
+      "nights": 2,
+      "total_price": 300,
+      "rating": 4.6,
+      "source": "google_maps",
+      "notes": "Parking available, breakfast included",
+      "website": "https://example.com",
+      "phone": "+33 3 88 00 00 00"
     }
   ],
   "budget": [
     {
       "category": "Transport",
+      "name": "Fuel + tolls (800km)",
       "amount": 200,
-      "notes": "Fuel + tolls for 800km total"
+      "notes": "Fuel ~150 EUR + tolls ~50 EUR"
     },
     {
       "category": "Accommodation",
-      "amount": 450,
-      "notes": "3 nights at ~150/night"
+      "name": "Hotel Le Bouclier d'Or (2 nights, Day 1-2)",
+      "amount": 300,
+      "notes": "150 EUR/night x 2 nights. Parking included."
     },
     {
       "category": "Food",
+      "name": "Food & drinks (3 days, 2 persons)",
       "amount": 300,
-      "notes": "~50/person/day"
+      "notes": "~50/person/day mid-range"
     },
     {
       "category": "Activities",
+      "name": "Entry fees and tours",
       "amount": 100,
-      "notes": "Entry fees and tours"
+      "notes": "Eiffel Tower 26 EUR, Louvre 17 EUR, etc."
     },
     {
-      "category": "Buffer",
+      "category": "Other",
+      "name": "Miscellaneous + buffer",
       "amount": 105,
       "notes": "~10% contingency"
     }
@@ -252,11 +313,11 @@ This file is the **handoff artifact** — it must contain everything needed to b
   ],
   "reservations": [
     {
-      "type": "hotel",
-      "name": "Hotel & Spa Le Bouclier d'Or",
+      "type": "flight",
+      "name": "Turkish Airlines TK1902 ZRH→IST",
       "date": "2026-06-15",
       "confirmation": "ABC123",
-      "notes": "Check-in 15:00, check-out 11:00"
+      "notes": "Depart 10:15, arrive 14:30"
     }
   ]
 }
@@ -269,6 +330,8 @@ This file is the **handoff artifact** — it must contain everything needed to b
 - Currency matches destination (JPY, EUR, USD, CHF, etc.)
 - Budget amounts are TOTAL (not per person) unless noted
 - Include all data the build skill needs — names, addresses, coordinates, times, notes, websites, phones
+- **Accommodations** live in the top-level `accommodations` array, NOT inside individual days. Each entry spans check-in to check-out day. The build skill uses this to assign hotels to the correct days and create reservation links.
+- **Budget must have one entry per accommodation** with `name` including hotel name, nights, and dates. No lump-sum "Accommodation (X nights)" entries — per-hotel pricing is required for auditability.
 
 After saving, tell the user:
 
