@@ -58,6 +58,10 @@ The MCP servers connect automatically when Claude Code starts from this director
 
 ## Usage
 
+### Pre-loading your personal defaults (optional)
+
+`/plan-trip` reads `profile/USER_PROFILE.md` at the start of every run. Fill in stable personal info there (traveler count, home address, vehicle, vacation style, budget tier, dietary needs…) and Claude will stop asking the same questions every trip. Values are pre-filled as defaults and still shown in the Phase 1 confirmation summary, tagged `(from profile)` — override any of them per-trip. See `profile/README.md` for details.
+
 ### Planning a trip
 
 Use `/plan-trip` in Claude Code to research and plan an itinerary:
@@ -165,6 +169,9 @@ The MCP servers require Node.js 22+ and `npx`. If you use nvm, run `nvm install`
   settings.json                # MCP server configurations (auto-loaded by Claude Code)
   skills/plan-trip/SKILL.md    # /plan-trip — research & plan an itinerary
   skills/build-trip/SKILL.md   # /build-trip — create a planned trip in TREK
+profile/
+  USER_PROFILE.md              # Personal defaults pre-loaded by /plan-trip (optional)
+  README.md                    # How the profile is used
 core/
   trek-mcp.sh                  # TREK MCP server launcher (reads config from .env)
   google-maps-mcp.sh           # Google Maps MCP server launcher (reads API key from .env)
