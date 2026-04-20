@@ -23,11 +23,27 @@ Plan a trip for: $ARGUMENTS
 
 Follow these phases in order. Complete each phase fully before moving to the next.
 
+### Phase 0 — Load User Profile
+
+Before asking the user anything, load stable personal defaults from `profile/USER_PROFILE.md` (repo root).
+
+1. Use `Read` on `profile/USER_PROFILE.md`. If the file does not exist or is empty, skip this phase and proceed to Phase 1 as normal.
+2. Parse the file's sections into a known-values table covering: traveler count, names/ages, pets, home address, home lat/lng, nearest airports, vacation style, pace, accommodation style, interests, transport mode, own vehicle, driver's license countries, home currency, budget tier, per-day budget range, dietary restrictions, accessibility needs, language preferences.
+3. Treat any filled field as a **pre-filled default**, NOT a confirmed fact. Commented-out examples (`<!-- ... -->`) and blank fields are not values — ignore them.
+4. Carry this table into Phase 1.
+
+**Critical:** Phase 0 values are defaults to confirm, never silent assumptions. The "NEVER assume" rule in Phase 1 still applies — every value must appear in the confirmation summary and be explicitly confirmed by the user.
+
 ### Phase 1 — Gather Requirements (Interactive)
 
 **DO NOT proceed to Phase 2 until ALL requirements below are confirmed by the user.**
 
-First, extract any information already provided in the user's initial prompt. Then use `AskUserQuestion` to collect anything missing. Group related questions together to minimize rounds (max 4 questions per call).
+First, merge three sources to determine what is already known:
+1. The user's initial prompt (highest priority — trip-specific overrides)
+2. The Phase 0 profile table (pre-filled defaults)
+3. Everything else → must be asked
+
+Then use `AskUserQuestion` to collect anything still missing. Group related questions together to minimize rounds (max 4 questions per call). Do NOT ask for fields that are already covered by the prompt or the profile — they will be confirmed in step 4 below.
 
 **Required information:**
 
@@ -46,28 +62,28 @@ First, extract any information already provided in the user's initial prompt. Th
 
 **Flow:**
 
-1. Parse the user's initial prompt and list what's already known.
-2. **Round 1:** Ask all open-ended missing fields (1-6) in a single message. Just list them as bullet points — don't use AskUserQuestion for free-text fields.
-3. **Round 2:** Use `AskUserQuestion` for the remaining choice-based fields (7-10) that weren't provided. Batch up to 4 questions per call.
-4. **Confirmation:** Present a summary of all gathered requirements and ask the user to confirm before proceeding:
+1. Parse the user's initial prompt AND the Phase 0 profile table. List what's already known and tag each value with its source: `(from prompt)` or `(from profile)`.
+2. **Round 1:** Ask all open-ended fields (1-6) that are still missing after merging prompt + profile. Just list them as bullet points — don't use AskUserQuestion for free-text fields.
+3. **Round 2:** Use `AskUserQuestion` for the remaining choice-based fields (7-10) that weren't provided by prompt or profile. Batch up to 4 questions per call.
+4. **Confirmation:** Present a summary of all gathered requirements with source tags and ask the user to confirm before proceeding:
 
 ```
 ## Trip Requirements — Please Confirm
 
-- **Destination:** [X]
-- **Dates:** [X] → [X] ([N] days)
-- **Travelers:** [N]
-- **Starting from:** [X]
-- **Budget:** [X] per person / [X] total
-- **Accommodation:** [X]
-- **Transport:** [X]
-- **Interests:** [X, Y, Z]
-- **Pets:** [X]
+- **Destination:** [X] (from prompt)
+- **Dates:** [X] → [X] ([N] days) (from prompt)
+- **Travelers:** [N] (from profile)
+- **Starting from:** [X] (from profile)
+- **Budget:** [X] per person / [X] total (asked)
+- **Accommodation:** [X] (from profile)
+- **Transport:** [X] (from profile)
+- **Interests:** [X, Y, Z] (asked)
+- **Pets:** [X] (from profile)
 
-Does this look correct? (Reply to confirm or correct anything)
+Profile-sourced values are defaults — override any of them for this trip by replying with the change. Does this look correct?
 ```
 
-**NEVER assume or fill in missing information with defaults.** If the user doesn't answer a question, ask again. Every field must have an explicit user-provided value.
+**NEVER assume or fill in missing information with defaults that aren't in the profile or prompt.** Profile values count as user-provided only once the user confirms this summary. If the user doesn't answer a question (and the profile doesn't cover it), ask again. Every field must appear in the confirmation with a source tag and be explicitly confirmed.
 
 ### Phase 2 — Research
 
