@@ -84,13 +84,26 @@ You can also just describe what you want in natural language — Claude will use
 1. Gather your requirements (starting point, destination, dates, budget, interests)
 2. Research destinations, routes, activities, and pricing via web search
 3. Look up places via Google Maps (ratings, reviews, opening hours, directions)
-4. Search Airbnb and hotel options for accommodation
-5. Present a full itinerary for your approval — iterate until you're happy
-6. Save the approved plan as a JSON file in `plans/`
+4. Present a full itinerary for your approval — iterate until you're happy
+5. Save the approved plan as a JSON file in `plans/` (with an empty `accommodations` array — hotels are picked next)
+
+### Finding accommodations
+
+Once the itinerary is approved, use `/find-accommodation` to research and pick hotels for each stay:
+
+```
+/find-accommodation plans/japan-2026/japan_road_trip.json
+```
+
+`/find-accommodation` will:
+1. Detect the distinct stays from your itinerary and confirm them with you
+2. Research candidates via Google Maps (hotels, ryokans, B&Bs) and Airbnb (apartments, unique stays)
+3. Present the top 3 options per stay with pros/cons, per-night prices, ratings
+4. Patch the plan JSON in place with your picks and add per-hotel rows to the budget
 
 ### Building the trip in TREK
 
-Once you've approved a plan, use `/build-trip` to create it in your TREK instance:
+Once both itinerary and accommodations are in the plan JSON, use `/build-trip` to create it in your TREK instance:
 
 ```
 /build-trip plans/japan-2026/japan_road_trip.json
@@ -99,10 +112,10 @@ Once you've approved a plan, use `/build-trip` to create it in your TREK instanc
 `/build-trip` will:
 1. Read and validate the plan JSON
 2. Check if the trip already exists in TREK (for recovery after interruptions)
-3. Create the trip with all places, day assignments, budget, packing list, reservations, and notes
+3. Create the trip with all places, day assignments, accommodations, budget, packing list, reservations, and notes
 4. Present a summary with the trip URL
 
-The two-step flow (`/plan-trip` → `/build-trip`) keeps each step focused and prevents context overflow on longer trips. Research and TREK creation run in separate conversations, so even a 2-week itinerary won't run out of steam.
+The three-step flow (`/plan-trip` → `/find-accommodation` → `/build-trip`) keeps each phase focused and prevents context overflow on longer trips. Each step runs in its own conversation, so even a 2-week itinerary won't run out of steam.
 
 ## MCP Servers
 
@@ -167,8 +180,9 @@ The MCP servers require Node.js 22+ and `npx`. If you use nvm, run `nvm install`
 ```
 .claude/
   settings.json                # MCP server configurations (auto-loaded by Claude Code)
-  skills/plan-trip/SKILL.md    # /plan-trip — research & plan an itinerary
-  skills/build-trip/SKILL.md   # /build-trip — create a planned trip in TREK
+  skills/plan-trip/SKILL.md          # /plan-trip — research & plan an itinerary
+  skills/find-accommodation/SKILL.md # /find-accommodation — research & pick hotels for a planned trip
+  skills/build-trip/SKILL.md         # /build-trip — create a planned trip in TREK
 profile/
   USER_PROFILE.md              # Personal defaults pre-loaded by /plan-trip (optional)
   README.md                    # How the profile is used

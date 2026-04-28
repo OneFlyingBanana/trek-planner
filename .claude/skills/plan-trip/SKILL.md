@@ -11,7 +11,7 @@ Plan a trip for: $ARGUMENTS
 
 **NO SUB-AGENTS:** Do ALL work directly. NEVER use the Agent tool to delegate research, creation, or any other step. You must perform every tool call yourself.
 
-**SEQUENTIAL MCP CALLS:** NEVER call MCP tools in parallel. MCP servers are unreliable under concurrent requests. Execute all MCP tool calls (Google Maps, Airbnb) one at a time, sequentially.
+**SEQUENTIAL MCP CALLS:** NEVER call MCP tools in parallel. MCP servers are unreliable under concurrent requests. Execute all MCP tool calls (Google Maps) one at a time, sequentially.
 
 **CONTEXT EFFICIENCY:** You are doing research-heavy work. Manage your context carefully:
 - Shortlist candidates using `maps_search_places` ratings BEFORE calling `maps_place_details` — only deep-dive your top 2-3 picks per slot.
@@ -87,7 +87,7 @@ Profile-sourced values are defaults — override any of them for this trip by re
 
 ### Phase 2 — Research
 
-Do ALL research in this phase. Build up a running summary of selected places, accommodations, and route info as you go.
+Do ALL research in this phase. Build up a running summary of selected places and route info as you go. (Accommodation research is deferred — see Phase 2c.)
 
 #### 2a. Web Research
 Use **WebSearch** to gather:
@@ -116,35 +116,9 @@ When choosing between similar places (e.g., two ramen shops near the same area),
 
 **After place research:** Summarize your selected places per day with name, address, lat/lng, rating, key notes, and planned visit time.
 
-#### 2c. Accommodation Research (Google Maps + Airbnb)
-Use BOTH sources to find the best accommodation for each stop:
+#### 2c. Accommodation Research — DEFERRED
 
-**WebSearch** — for pricing, availability, booking platforms, and accommodation guides:
-- Search for accommodation options, price comparisons, and "best places to stay in [location]" guides
-- Find **per-night pricing** for each shortlisted hotel — this is critical for accurate budgeting
-- Discover accommodation types specific to the destination (e.g., ryokans, riads, agriturismos)
-- Cross-check prices across Booking.com, Expedia, official sites for the actual travel dates
-
-**Google Maps** — for hotels, hostels, ryokans, B&Bs, and other traditional accommodations:
-1. `maps_search_places` — search for accommodation near the area (e.g., "hotels near Takayama station")
-2. `maps_place_details` — get ratings, reviews, website, phone, opening hours for promising results
-
-**Airbnb** — for apartments, houses, unique stays, and self-catered options:
-1. `airbnb_search` — search by location, dates, and number of guests. **Always pass `ignoreRobotsText: true`**
-2. `airbnb_listing_details` — get full details for promising listings. **Always pass `ignoreRobotsText: true`**
-
-**Compare across both sources by:**
-- Price per night
-- Rating and number of reviews
-- Location proximity to planned activities
-- Amenities (parking, kitchen, wifi, washer, pet-friendly if applicable)
-- Accommodation type fit (e.g., ryokan for a cultural experience, apartment for a longer stay)
-
-Select the top 3 options to present to the user with pros/cons for each. The best picks may be a mix of Google Maps and Airbnb results.
-
-**Per-hotel pricing is mandatory:** Each accommodation MUST have a researched per-night price. Do NOT output a single lump-sum accommodation budget line — the budget must have one entry per hotel with the actual nightly rate x number of nights. This ensures the budget is accurate and auditable.
-
-**Multi-night stays:** When the itinerary stays at the same hotel for consecutive nights, represent it as a single accommodation entry with `check_in_day` and `check_out_day` spanning the full stay. Do not duplicate entries per night.
+Accommodation finding is a **separate skill**. Do NOT research hotels, Airbnbs, or per-night pricing in this skill. After the itinerary is approved and saved (Phase 4), instruct the user to run `/find-accommodation <plan-path>` to fill in stays. The plan JSON's `accommodations` array is left empty by this skill.
 
 #### 2d. Route & Drive Time Research
 Use Google Maps to validate the itinerary is realistic:
@@ -155,7 +129,6 @@ Use Google Maps to validate the itinerary is realistic:
 
 #### 2e. Handling Research Failures
 - **Maps search returns no results:** Try broader search terms, nearby city names, or alternative spellings. If still nothing, fall back to WebSearch for the place and use `maps_geocode` with the address.
-- **Airbnb search fails or returns nothing:** Rely on Google Maps hotel search + WebSearch for accommodation options. Note the gap to the user.
 - **Place details unavailable:** Use WebSearch to fill in missing info (hours, website, phone). Note which details are unverified.
 - **Directions fail:** Try with broader waypoints (city center instead of specific address). Estimate drive time from WebSearch if needed.
 
@@ -178,34 +151,25 @@ Present the full proposed itinerary using this structure:
 | 09:00 | [Place/Activity] | [rating] · [drive time from previous] · [key note] |
 | ... | ... | ... |
 
-**Stay:** [Hotel Name] (check-in [time])
+**Stay area for the night:** [City/Town] *(specific hotel chosen later via `/find-accommodation`)*
 
 *(repeat for each day)*
 
 ---
 
-### Accommodations
-| Night(s) | Hotel | Per Night | Nights | Total | Parking | Notes |
-|----------|-------|-----------|--------|-------|---------|-------|
-| 1 | Hotel Name | 150 | 1 | 150 | Free | Rating 4.6, breakfast included |
-| 2-3 | Ryokan Name | 300 | 2 | 600 | Free | Includes meals, onsen |
-| ... | ... | ... | ... | ... | ... | ... |
+### Budget Estimate (excluding accommodation)
 
-For each location, present top 3 options with: price/night, rating, pros/cons, source (Maps/Airbnb). Let the user pick.
+Accommodation costs are filled in later by `/find-accommodation`. Present only non-accommodation budget here.
 
-### Budget Estimate
 | Category | Item | Total |
 |----------|------|-------|
-| Accommodation | Hotel Name (X nights) | ... |
-| Accommodation | Ryokan Name (X nights) | ... |
 | Transport | Flights | ... |
 | Transport | Car rental | ... |
 | Transport | Fuel + tolls | ... |
 | Food | Food & drinks (X days, X persons) | ... |
 | Activities | Entry fees | ... |
 | Other | Miscellaneous + buffer | ... |
-| **TOTAL** | | **...** |
-| **Per person** | | **...** |
+| **SUBTOTAL (excl. accommodation)** | | **...** |
 
 ### Flagged Issues
 - [Any long drives, low-rated places, opening hours conflicts, unverified info]
@@ -213,7 +177,7 @@ For each location, present top 3 options with: price/night, rating, pros/cons, s
 
 **STOP. Wait for user feedback and approval before proceeding to Phase 4.**
 
-The user may want to swap places, adjust timing, pick different accommodations, or change the route. Iterate until they are satisfied.
+The user may want to swap places, adjust timing, change the stay area for a night, or change the route. Iterate until they are satisfied.
 
 ### Phase 4 — Save Approved Plan
 
@@ -264,38 +228,13 @@ This file is the **handoff artifact** — it must contain everything needed to b
       ]
     }
   ],
-  "accommodations": [
-    {
-      "name": "Hotel & Spa Le Bouclier d'Or",
-      "address": "1 Rue du Bouclier, 67000 Strasbourg",
-      "lat": 48.5850,
-      "lng": 7.7458,
-      "check_in_day": 1,
-      "check_out_day": 3,
-      "check_in_time": "15:00",
-      "check_out_time": "11:00",
-      "price_per_night": 150,
-      "nights": 2,
-      "total_price": 300,
-      "rating": 4.6,
-      "source": "google_maps",
-      "notes": "Parking available, breakfast included",
-      "website": "https://example.com",
-      "phone": "+33 3 88 00 00 00"
-    }
-  ],
+  "accommodations": [],
   "budget": [
     {
       "category": "Transport",
       "name": "Fuel + tolls (800km)",
       "amount": 200,
       "notes": "Fuel ~150 EUR + tolls ~50 EUR"
-    },
-    {
-      "category": "Accommodation",
-      "name": "Hotel Le Bouclier d'Or (2 nights, Day 1-2)",
-      "amount": 300,
-      "notes": "150 EUR/night x 2 nights. Parking included."
     },
     {
       "category": "Food",
@@ -346,12 +285,12 @@ This file is the **handoff artifact** — it must contain everything needed to b
 - Currency matches destination (JPY, EUR, USD, CHF, etc.)
 - Budget amounts are TOTAL (not per person) unless noted
 - Include all data the build skill needs — names, addresses, coordinates, times, notes, websites, phones
-- **Accommodations** live in the top-level `accommodations` array, NOT inside individual days. Each entry spans check-in to check-out day. The build skill uses this to assign hotels to the correct days and create reservation links.
-- **Budget must have one entry per accommodation** with `name` including hotel name, nights, and dates. No lump-sum "Accommodation (X nights)" entries — per-hotel pricing is required for auditability.
+- **`accommodations` MUST be saved as an empty array `[]`.** This skill does NOT research stays. Hotels are filled in later by `/find-accommodation`, which patches the same JSON file in place.
+- **Budget must NOT contain `Accommodation` rows** at this stage. `/find-accommodation` adds per-hotel rows when it patches the plan.
 
 After saving, tell the user:
 
-> Plan saved to `plans/<path>/<file>.json`. To create this trip in TREK, run: `/build-trip plans/<path>/<file>.json`
+> Plan saved to `plans/<path>/<file>.json`. Next step: run `/find-accommodation plans/<path>/<file>.json` to research and pick hotels. Once that's done, run `/build-trip plans/<path>/<file>.json` to create the trip in TREK.
 
 ## Tips
 - **Day 1 MUST start with the departure location** (home address) as the first item — the build skill needs it for map routing

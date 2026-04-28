@@ -25,8 +25,10 @@ Build a trip in TREK from: $ARGUMENTS
    - `starting_location` with `lat` and `lng`
    - `days` array with at least one day
    - Each place item has `lat` and `lng`
-   - `accommodations` array with at least one entry (each with `check_in_day`, `check_out_day`, lat/lng)
+   - `accommodations` array (may be empty if `/find-accommodation` has not been run yet — see below). When non-empty, each entry must have `check_in_day`, `check_out_day`, lat/lng.
    - `budget` array with entries
+
+   **If `accommodations` is empty:** warn the user and ask whether to (a) abort and run `/find-accommodation <path>` first, or (b) proceed without hotels (rare — only for trips where stays will be added manually in TREK later). Do not silently continue.
 3. Present a detailed summary and **wait for user confirmation before creating anything**:
 
 ```
@@ -84,6 +86,8 @@ For each day, add items in itinerary order:
 - After all items: `reorder_day_assignments` to confirm correct order
 
 **Step 3 — Create accommodations and link to days:**
+
+If the plan's `accommodations` array is empty, skip this entire step.
 
 For each entry in the plan's `accommodations` array:
 
