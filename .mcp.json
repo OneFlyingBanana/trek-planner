@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "trek": {
+      "type": "http",
+      "url": "https://trek.roaldbrunell.dev/mcp"
+    }
+  }
+}
