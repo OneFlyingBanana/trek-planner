@@ -28,7 +28,7 @@ Find accommodations for the plan at: $ARGUMENTS
 ### Phase 1 — Load Plan & Profile
 
 1. Read the plan JSON file from `$ARGUMENTS`. If no path provided, ask the user.
-2. Validate the plan has: `title`, `start_date`, `end_date`, `currency`, `travelers`, `days` array, and `starting_location`. Abort with a clear error if any are missing.
+2. Validate the plan has: `schema_version` (must equal `1`), `title`, `start_date`, `end_date`, `currency`, `travelers`, `days` array, and `starting_location`. Abort with a clear error naming the missing field if any are absent. If `schema_version` is missing or not `1`, warn that the plan predates the current schema and suggest regenerating it with `/plan-trip`.
 3. If `accommodations` is non-empty, ask the user whether to **replace** the existing entries or **abort**. Do not silently overwrite.
 4. Read `profile/USER_PROFILE.md` if present, for accommodation style / pets / budget tier defaults. Treat as defaults to confirm, never silent assumptions.
 
@@ -128,7 +128,7 @@ After all stays are presented, ask the user to pick one option per stay. Iterate
 
 ### Phase 6 — Patch Plan JSON
 
-Once the user confirms picks, patch the plan JSON file in place:
+Once the user confirms picks, patch the plan JSON file in place. **Preserve all existing fields** — read the full file, modify only `accommodations` and `budget`, and write it back with every other field (including `schema_version`, `transport`, `reservations`, `packing`, `collab_notes`) intact.
 
 1. **Replace `accommodations` array** with one entry per chosen accommodation. Multi-night stays at the same hotel = one entry with `check_in_day`/`check_out_day` spanning the full stay. Schema:
 

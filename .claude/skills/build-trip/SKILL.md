@@ -21,14 +21,19 @@ Build a trip in TREK from: $ARGUMENTS
 
 1. Read the plan JSON file from the path provided in $ARGUMENTS. If no path is provided, ask the user.
 2. Validate the plan has all required fields:
+   - `schema_version` — must be present and equal `1`. If missing or a different value, warn the user with a clear message ("This plan predates the current schema — regenerate it with `/plan-trip`, or confirm you want to proceed anyway") before continuing. Do not silently proceed on an unknown schema.
    - `title`, `start_date`, `end_date`, `currency`
    - `starting_location` with `lat` and `lng`
    - `days` array with at least one day
    - Each place item has `lat` and `lng`
    - `accommodations` array (may be empty if `/find-accommodation` has not been run yet — see below). When non-empty, each entry must have `check_in_day`, `check_out_day`, lat/lng.
-   - `budget` array with entries
+   - `budget` array (may be empty — see the empty-budget note below).
+
+   For any missing or malformed field, name the specific field and which skill produces it (`/plan-trip` for itinerary/budget/transport; `/find-accommodation` for accommodations) rather than failing vaguely.
 
    **If `accommodations` is empty:** warn the user and ask whether to (a) abort and run `/find-accommodation <path>` first, or (b) proceed without hotels (rare — only for trips where stays will be added manually in TREK later). Do not silently continue.
+
+   **If `budget` is empty:** warn the user that the trip will be created with no budget items and confirm they want to proceed. Do not silently continue.
 3. Present a detailed summary and **wait for user confirmation before creating anything**:
 
 ```
@@ -39,7 +44,8 @@ Build a trip in TREK from: $ARGUMENTS
 **Currency:** [X]
 **Places:** [N] across [N] days
 **Accommodations:** [N] hotels covering [N] nights
-**Budget:** [total] ([per person] per person)
+**Budget:** [total] ([per person] per person) — *or* **⚠️ No budget items in plan**
+**Transport:** [N] flights/trains/car rentals
 
 Accommodation coverage:
 - Night 1-2: Hotel Name
@@ -81,8 +87,8 @@ Use TREK MCP tools to build the trip using data from the plan JSON.
 > **Minimum 2 places per day (when traveling):** Any day that involves moving between locations MUST have at least 2 assigned places so TREK can draw driving routes between them. For travel/driving days, add both departure and arrival places. **Exception:** Rest days or days spent entirely in one location (e.g., beach day, resort day, city exploration on foot) can have just 1 place — TREK will show a map marker without a route line, which is correct for stationary days.
 
 For each day, add items in itinerary order:
-- **Places:** `create_place` (with name, description, address, lat, lng, website, phone from plan) → `assign_place_to_day` → `update_assignment_time` (with time_start/time_end from plan)
-- **Notes:** `create_day_note` for each note item in the plan
+- **Places:** `create_and_assign_place` (atomic create + assign — pass name, description, address, lat, lng, website, phone, and `dayId` in one call) → then `update_assignment_time` with `time_start`/`time_end` from the plan, but only when the plan provides times. Using the atomic tool instead of separate `create_place` + `assign_place_to_day` halves the number of sequential MCP calls, which matters given the connection-reliability warning above.
+- **Notes:** `create_day_note` for each note item in the plan. The `icon` field must be a **single emoji** — plans following the current schema already store emoji, so pass `icon` through as-is. If an older plan provides a keyword string (e.g. `"car"`, `"walk"`), map it to a sensible emoji (`🚗`, `🚶`) before calling, or omit `icon`; never pass the raw keyword.
 - After all items: `reorder_day_assignments` to confirm correct order
 
 **Step 3 — Create accommodations and link to days:**
@@ -92,33 +98,31 @@ If the plan's `accommodations` array is empty, skip this entire step.
 For each entry in the plan's `accommodations` array:
 
 1. `search_place` to find the Google Place ID for the hotel
-2. `create_place` with name, description, address, lat, lng, google_place_id, website, phone, **category_id=1** (Hotel)
-3. `assign_place_to_day` on the **check-in day** — hotel appears as the last place (where you arrive in the evening)
-4. `assign_place_to_day` on the **check-out day** — hotel needs to be the first place (where you depart from in the morning)
-5. `reorder_day_assignments` on the **check-out day** to move the hotel assignment to position 0 (first)
-6. `create_reservation` with:
-   - `type: "hotel"`
-   - `place_id` from step 2
-   - `start_day_id` (check-in day ID) and `end_day_id` (check-out day ID) — this auto-creates the accommodation link in TREK
-   - `check_in` and `check_out` times from the plan
-   - `notes` with pricing and booking info
+2. `create_place_accommodation` — creates the hotel place AND the accommodation link in one atomic call. Pass name, description, address, lat, lng, google_place_id, website, phone, **category_id=1** (Hotel), `start_day_id` (check-in day), `end_day_id` (check-out day), `check_in`/`check_out` times, and `price`/`currency` so the cost lands on the item. This replaces the old create_place → assign → reserve dance and captures price in the same call. Capture the returned place ID.
+3. `assign_place_to_day` on the **check-out day** — the hotel needs to also appear as the first place of the departure morning (the atomic call links the accommodation but does not add the check-out-day assignment the map routing needs).
+4. `reorder_day_assignments` on the **check-out day** to move the hotel assignment to position 0 (first).
+
+> **Fallback (existing-trip recovery):** if the hotel place already exists (Phase 2 found it), use `create_accommodation` (place already created) or `link_hotel_accommodation` (reservation already exists) instead of `create_place_accommodation`, which is only for places that do not yet exist.
 
 **Important:**
+- `create_place_accommodation` already assigns the hotel to the **check-in day** as part of the link. Steps 3–4 add the separate **check-out day** assignment + reorder.
 - Do NOT assign hotels to intermediate days of multi-night stays (e.g., for a 3-night stay on days 9-11, only assign to day 9 and day 12)
 - The check-out day assignment + reorder ensures each day shows the correct start/end driving points on the TREK map
-- Skip step 4-5 for the last accommodation if its check-out day is the departure day and the departure airport is already assigned as the first place
+- Skip steps 3–4 for the last accommodation if its check-out day is the departure day and the departure airport is already assigned as the first place
 
 **Step 4 — Add remaining trip details:**
-- `create_budget_item` for each entry in the `budget` array. Use the `name` field from the plan for clear per-item descriptions (e.g., "Hotel Kajikaso (2 nights, Nov 3-4)" instead of generic "Accommodation").
-- `create_reservation` for each non-hotel entry in the `reservations` array (flights, restaurants, etc.)
-- `create_packing_item` for each entry in the `packing` array
-- `create_collab_note` for each entry in the `collab_notes` array
+- **Budget:** `create_budget_item` for each entry in the `budget` array. Use the `name` field from the plan for clear per-item descriptions (e.g., "Hotel Kajikaso (2 nights, Nov 3-4)" instead of generic "Accommodation"). For shared/group trips, ask the user who splits each expense and use `create_budget_item_with_members` instead.
+- **Transport:** `create_transport` for each entry in the `transport[]` array (flights, trains, car rentals, cruises). For flights, call `search_airports` first to resolve each endpoint's IATA `code` and timezone, then set `endpoints[]` with `role` (`from`/`to`/`stop`), `sequence`, `local_date`, `local_time`, and `timezone`. Do NOT use `create_reservation` for these — its type enum does not include `flight`/`train`/`car`/`cruise`.
+- **Reservations:** `create_reservation` for each entry in the `reservations` array (restaurants, events, tours, activities — never flights or hotels). Link to a day assignment via `assignment_id` where applicable.
+- **Packing:** `create_packing_item` for each entry in the `packing` array
+- **Collab notes:** `create_collab_note` for each entry in the `collab_notes` array
 
 ### Phase 4 — Present Summary
 
 Present the completed trip with:
 - Trip URL on TREK
 - **Accommodation coverage:** Verify every night has a linked accommodation (use `get_trip_summary` to confirm). Flag any gaps.
+- **Budget coverage:** Verify the trip has budget items (use `get_trip_summary` to confirm). If the plan carried no budget and none were created, explicitly warn the user that the trip has **no budget** — do not present a silent zero.
 - Budget breakdown (per person and total)
 - Day-by-day highlights (title + number of places + accommodation for that night)
 - Any items that were skipped (already existed) or failed (with error details)

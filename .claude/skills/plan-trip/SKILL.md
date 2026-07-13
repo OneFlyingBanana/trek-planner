@@ -189,13 +189,14 @@ This file is the **handoff artifact** — it must contain everything needed to b
 
 ```json
 {
+  "schema_version": 1,
   "title": "Trip Title",
   "description": "Short description of the trip",
   "start_date": "YYYY-MM-DD",
   "end_date": "YYYY-MM-DD",
   "currency": "EUR",
   "travelers": 2,
-  "transport": "rental car",
+  "transport_mode": "rental car",
   "starting_location": {
     "name": "Home, Chamoson",
     "address": "1955 Chamoson, Switzerland",
@@ -223,7 +224,7 @@ This file is the **handoff artifact** — it must contain everything needed to b
         {
           "type": "note",
           "text": "30 min drive to restaurant",
-          "icon": "car"
+          "icon": "🚗"
         }
       ]
     }
@@ -266,24 +267,41 @@ This file is the **handoff artifact** — it must contain everything needed to b
       "content": "Emergency contacts, check-in times, parking info..."
     }
   ],
-  "reservations": [
+  "transport": [
     {
       "type": "flight",
-      "name": "Turkish Airlines TK1902 ZRH→IST",
-      "date": "2026-06-15",
+      "title": "Turkish Airlines TK1902 ZRH→IST",
+      "from": { "code": "ZRH", "local_date": "2026-06-15", "local_time": "10:15" },
+      "to": { "code": "IST", "local_date": "2026-06-15", "local_time": "14:30" },
       "confirmation": "ABC123",
+      "price": 320,
       "notes": "Depart 10:15, arrive 14:30"
+    }
+  ],
+  "reservations": [
+    {
+      "type": "restaurant",
+      "title": "Dinner at Le Comptoir",
+      "date": "2026-06-15",
+      "time": "20:00",
+      "confirmation": "XYZ789",
+      "price": 90,
+      "notes": "Table for 2, terrace requested"
     }
   ]
 }
 ```
 
 **Rules:**
+- **Every plan MUST include `"schema_version": 1`** as the first field. The build skill validates against it.
 - Dates in YYYY-MM-DD format
 - Day numbers sequential from 1
 - All places MUST have lat/lng coordinates
 - Currency matches destination (JPY, EUR, USD, CHF, etc.)
 - Budget amounts are TOTAL (not per person) unless noted
+- **Day-note `icon` MUST be a single emoji character** (e.g. `🚗` `♨️` `🍜` `🏔️` `✈️`), never a keyword string like `"car"`. TREK renders this field as an emoji — a keyword shows up as literal text.
+- **`transport[]` is for flights, trains, car rentals, and cruises only.** For flights, set `from`/`to` `code` to the IATA airport code (the build skill resolves the timezone). `transport_mode` (top-level) is the trip's overall travel style, unrelated to the `transport[]` bookings.
+- **`reservations[].type` MUST be one of `restaurant`, `event`, `tour`, `activity`, `other`** — never `flight`/`train`/`car`/`cruise` (those go in `transport[]`) and never `hotel` (added by `/find-accommodation`).
 - Include all data the build skill needs — names, addresses, coordinates, times, notes, websites, phones
 - **`accommodations` MUST be saved as an empty array `[]`.** This skill does NOT research stays. Hotels are filled in later by `/find-accommodation`, which patches the same JSON file in place.
 - **Budget must NOT contain `Accommodation` rows** at this stage. `/find-accommodation` adds per-hotel rows when it patches the plan.

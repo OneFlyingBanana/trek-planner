@@ -127,6 +127,17 @@ Three MCP servers are configured in `.claude/settings.json`:
 | **google-maps** | Place search, place details (reviews, hours, phone), directions, distance matrix |
 | **airbnb** | Accommodation search and listing details |
 
+### Not yet used (future enhancements)
+
+TREK exposes more than the current three-skill flow uses. High-value capabilities the skills could adopt later:
+
+- **Weather** (`get_weather`, `get_detailed_weather`) — per-day, per-coordinate forecasts to inform packing and day pacing.
+- **List import** (`import_places_from_url`) — seed the place pool from a shared Google/Naver Maps list in one call.
+- **To-dos** (`create_todo`) — pre-trip task checklist (book tickets, IDP, currency) as a build output.
+- **Packing templates** (`apply_packing_template`) — reusable packing lists instead of ad-hoc items each trip.
+- **Collaboration** (`create_collab_poll`, `send_collab_message`) — group decisions and chat for shared trips.
+- **Split budgets & settle-up** (`create_budget_item_with_members`, settlements) — per-member expense splits for group trips.
+
 ## Troubleshooting
 
 ### Verify MCP servers are connected
