@@ -113,6 +113,8 @@ For each entry in the plan's `accommodations` array:
 **Step 4 — Add remaining trip details:**
 - **Budget:** `create_budget_item` for each entry in the `budget` array. Use the `name` field from the plan for clear per-item descriptions (e.g., "Hotel Kajikaso (2 nights, Nov 3-4)" instead of generic "Accommodation"). For shared/group trips, ask the user who splits each expense and use `create_budget_item_with_members` instead.
 - **Transport:** `create_transport` for each entry in the `transport[]` array (flights, trains, car rentals, cruises). For flights, call `search_airports` first to resolve each endpoint's IATA `code` and timezone, then set `endpoints[]` with `role` (`from`/`to`/`stop`), `sequence`, `local_date`, `local_time`, and `timezone`. Do NOT use `create_reservation` for these — its type enum does not include `flight`/`train`/`car`/`cruise`.
+
+  > **Own-vehicle road trips:** do NOT create transport legs for driving in your own car/EV. TREK auto-draws the driving route between the places assigned to each day, so the map already shows the road — the requirement is 2+ assigned places on each relocation day (Step 2), not a `car` transport record. Reserve `create_transport` for actual bookings (rentals, ferries, flights, trains) present in `transport[]`. Driving costs (fuel/charging, tolls, vignette) live as `budget[]` items.
 - **Reservations:** `create_reservation` for each entry in the `reservations` array (restaurants, events, tours, activities — never flights or hotels). Link to a day assignment via `assignment_id` where applicable.
 - **Packing:** `create_packing_item` for each entry in the `packing` array
 - **Collab notes:** `create_collab_note` for each entry in the `collab_notes` array
