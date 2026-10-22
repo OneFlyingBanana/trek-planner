@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: bash -n setup-mcp.sh core/*.sh
+      - name: JSON parse
+        run: |
+          python3 -m json.tool .mcp.json > /dev/null
+          python3 -m json.tool .claude/settings.json > /dev/null
