@@ -1,33 +1,91 @@
 # Trek Planner
 
-AI-powered trip planning using [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [TREK](https://github.com/mauriceboe/TREK).
+Trip planning skills for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that build trips in [TREK](https://github.com/mauriceboe/TREK).
 
-Tell Claude what kind of trip you want, and it will research destinations, build a day-by-day itinerary, and create it in your TREK instance — complete with places, budget, packing list, reservations, and day notes.
+Agents run the skills from **Paperclip**: Roald describes a trip on a Paperclip issue, the agents research and plan it, build a `[paperclip]` draft trip in TREK, and hand it back for review. All plan files are committed to this repo through pull requests. The rules agents follow are in `CLAUDE.md`.
 
-## Prerequisites
+## How it runs in Paperclip
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
-- A [TREK](https://github.com/mauriceboe/TREK) instance with the MCP addon enabled
-- [Node.js](https://nodejs.org/) 22+ (for MCP server packages) — use [nvm](https://github.com/nvm-sh/nvm) to manage versions
-- A [Google Maps API key](https://console.cloud.google.com/) (for place search, details, directions)
+- **TREK** is reached through Paperclip's TREK connection. Agents need no TREK URL, token or `.env` file.
+- **Google Maps** data comes through TREK's own tools (`search_place` with `provider: "google"`, `get_place_details`), billed to Roald's key and capped per trip (`docs/call-budgets.md`). No separate Google Maps server is used.
+- **Airbnb, AirTrail and Dawarich** are not used (`docs/sources.md`).
+- **Documents** (PDFs, spreadsheets, the roadbook) are made with the ArtCraft `*craft-cli` apps in the agent container.
+- Every TREK call can time out after 10 s with `mcp_remote_fetch_failed`; the retry rule is in `CLAUDE.md`.
 
-## Setup
+### The flow
 
-### 1. Clone and configure
+1. Roald opens a Paperclip issue with the trip brief.
+2. Agents propose the brief and the trip's driving settings. **Checkpoint 0:** Roald confirms them.
+3. Agents research the itinerary, build a skeleton `[paperclip] <title>` trip in TREK, check the route with TREK's calculator, pick stays and render the roadbook. All of it lands in `plans/<slug>/` on a `trip/<slug>` branch.
+4. **Checkpoint A:** Roald approves the plan PR in Paperclip.
+5. Agents complete the trip in TREK (stays, budget, todos, packing, notes).
+6. **Checkpoint B:** Roald reviews the trip in TREK and comments on the issue. A retro writes lessons to `docs/lessons/`.
+
+The skills for steps 2, 3 and 6 are being rebuilt in rounds (design on Paperclip issue ISD-4). Today the repo has:
+
+| Skill | Does | Runs in Paperclip? |
+|---|---|---|
+| `build-trip` | creates a planned trip in TREK from a plan JSON | yes (TREK tools only) |
+| `plan-trip` | researches and plans an itinerary, writes the plan JSON | laptop only for now: uses the Google Maps server |
+| `find-accommodation` | picks stays and patches the plan JSON | laptop only for now: uses the Google Maps and Airbnb servers; replaced by `find-stays` |
+| `generate-roadbook` | renders the plan as an HTML roadbook | laptop only for now: needs the Claude.ai `Artifact` tool; moving to ArtCraft PDF |
+
+### Personal defaults
+
+`profile/USER_PROFILE.example.md` shows the profile format, including Roald's driving settings. They are starting values: they are proposed for each trip and confirmed by Roald at checkpoint 0 before anything is written to TREK. Copy the example to `profile/USER_PROFILE.md` (gitignored) and fill it in; see `profile/README.md`.
+
+## Documentation
+
+| File | Contents |
+|---|---|
+| `CLAUDE.md` | rules for agents: board rules, retry rule, checkpoints |
+| `docs/pacing.md` | thresholds for drivable days, charging, fallback estimate |
+| `docs/call-budgets.md` | per-trip and per-build call limits |
+| `docs/sources.md` | research and accommodation sources and Roald's decisions on them |
+| `docs/lessons/README.md` | format of the per-trip lessons |
+| `docs/skills/CHANGELOG.md` | one line per skill change |
+
+## Project structure
+
+```
+CLAUDE.md                                  rules for agents
+.claude/settings.json                      MCP servers and tool allowlist (laptop mode)
+.claude/skills/plan-trip/SKILL.md          research and plan an itinerary
+.claude/skills/find-accommodation/SKILL.md pick stays for a planned trip
+.claude/skills/build-trip/SKILL.md         create a planned trip in TREK
+.claude/skills/generate-roadbook/SKILL.md  render the plan as a roadbook
+docs/                                      pacing, call budgets, sources, lessons, skill changelog
+profile/USER_PROFILE.example.md            profile format and driving starting values
+profile/README.md                          how the profile is used
+.mcp.json                                  TREK over HTTP (laptop mode)
+setup-mcp.sh, core/, .env.example, .nvmrc  laptop mode launchers
+```
+
+Trip folders (`plans/<slug>/`) are committed through pull requests once the first trip is planned.
+
+---
+
+## Appendix: laptop mode
+
+Roald can still run the skills in Claude Code on his own machine, with locally launched MCP servers. Agents do not use this path.
+
+### Prerequisites
+
+- Claude Code
+- A TREK instance with the MCP addon enabled
+- Node.js 22+ (`.nvmrc` pins the version; run `nvm install`)
+- A Google Maps API key, if you run `plan-trip` or `find-accommodation`
+
+### Setup
 
 ```bash
-git clone <repo-url>
-cd trek-planner
 cp .env.example .env
-```
-
-If you use [nvm](https://github.com/nvm-sh/nvm), the `.nvmrc` will automatically select the right Node version:
-
-```bash
 nvm install
+./setup-mcp.sh
+claude
 ```
 
-Edit `.env` and fill in your values:
+Fill in `.env`:
 
 ```
 TREK_URL=https://your-trek-instance.com
@@ -35,171 +93,25 @@ TREK_MCP_TOKEN=your_trek_mcp_token
 GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 ```
 
-**Where to get these:**
-- `TREK_URL` — The URL of your TREK instance
-- `TREK_MCP_TOKEN` — In TREK: Admin Panel → Addons → enable MCP, then Settings → MCP Configuration → generate token
-- `GOOGLE_MAPS_API_KEY` — [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
+- `TREK_MCP_TOKEN`: in TREK, Admin Panel → Addons → enable MCP, then Settings → MCP Configuration → generate token.
+- `GOOGLE_MAPS_API_KEY`: Google Cloud Console → APIs & Services → Credentials. Enable the Places, Directions and Geocoding APIs.
 
-### 2. Register MCP servers
+`setup-mcp.sh` registers three servers with Claude Code: `trek` (`core/trek-mcp.sh`), `google-maps` (`core/google-maps-mcp.sh`) and `airbnb`. The Airbnb server is still registered for the current `find-accommodation` skill, but Airbnb is no longer a planning source (`docs/sources.md`); you can skip it.
 
-```bash
-./setup-mcp.sh
-```
-
-This registers the three MCP servers (TREK, Google Maps, Airbnb) with Claude Code. You only need to run this once after cloning.
-
-### 3. Start Claude Code
-
-```bash
-claude
-```
-
-The MCP servers connect automatically when Claude Code starts from this directory.
-
-## Usage
-
-### Pre-loading your personal defaults (optional)
-
-`/plan-trip` reads `profile/USER_PROFILE.md` at the start of every run. Fill in stable personal info there (traveler count, home address, vehicle, vacation style, budget tier, dietary needs…) and Claude will stop asking the same questions every trip. Values are pre-filled as defaults and still shown in the Phase 1 confirmation summary, tagged `(from profile)` — override any of them per-trip. See `profile/README.md` for details.
-
-### Planning a trip
-
-Use `/plan-trip` in Claude Code to research and plan an itinerary:
-
-```
-/plan-trip 2 weeks in Japan, scenic driving and onsens, budget 3-4k CHF per person
-```
-
-```
-/plan-trip long weekend in Barcelona, food and architecture, mid-range budget
-```
+### Usage
 
 ```
 /plan-trip 10 days road trip through Scotland, castles and whisky
+/find-accommodation plans/<slug>/<plan>.json
+/generate-roadbook plans/<slug>/<plan>.json
+/build-trip plans/<slug>/<plan>.json
 ```
 
-You can also just describe what you want in natural language — Claude will use the trip planning skill automatically.
+Each skill runs in its own conversation; the plan JSON is the hand-off between them.
 
-`/plan-trip` will:
-1. Gather your requirements (starting point, destination, dates, budget, interests)
-2. Research destinations, routes, activities, and pricing via web search
-3. Look up places via Google Maps (ratings, reviews, opening hours, directions)
-4. Present a full itinerary for your approval — iterate until you're happy
-5. Save the approved plan as a JSON file in `plans/` (with an empty `accommodations` array — hotels are picked next)
+### Troubleshooting
 
-### Finding accommodations
-
-Once the itinerary is approved, use `/find-accommodation` to research and pick hotels for each stay:
-
-```
-/find-accommodation plans/japan-2026/japan_road_trip.json
-```
-
-`/find-accommodation` will:
-1. Detect the distinct stays from your itinerary and confirm them with you
-2. Research candidates via Google Maps (hotels, ryokans, B&Bs) and Airbnb (apartments, unique stays)
-3. Present the top 3 options per stay with pros/cons, per-night prices, ratings
-4. Patch the plan JSON in place with your picks and add per-hotel rows to the budget
-
-### Building the trip in TREK
-
-Once both itinerary and accommodations are in the plan JSON, use `/build-trip` to create it in your TREK instance:
-
-```
-/build-trip plans/japan-2026/japan_road_trip.json
-```
-
-`/build-trip` will:
-1. Read and validate the plan JSON
-2. Check if the trip already exists in TREK (for recovery after interruptions)
-3. Create the trip with all places, day assignments, accommodations, budget, packing list, reservations, and notes
-4. Present a summary with the trip URL
-
-The three-step flow (`/plan-trip` → `/find-accommodation` → `/build-trip`) keeps each phase focused and prevents context overflow on longer trips. Each step runs in its own conversation, so even a 2-week itinerary won't run out of steam.
-
-## MCP Servers
-
-Three MCP servers are configured in `.claude/settings.json`:
-
-| Server | Purpose |
-|:---|:---|
-| **trek** | Trip management via TREK (34 tools — trips, places, days, budget, packing, reservations, notes) |
-| **google-maps** | Place search, place details (reviews, hours, phone), directions, distance matrix |
-| **airbnb** | Accommodation search and listing details |
-
-### Not yet used (future enhancements)
-
-TREK exposes more than the current three-skill flow uses. High-value capabilities the skills could adopt later:
-
-- **Weather** (`get_weather`, `get_detailed_weather`) — per-day, per-coordinate forecasts to inform packing and day pacing.
-- **List import** (`import_places_from_url`) — seed the place pool from a shared Google/Naver Maps list in one call.
-- **To-dos** (`create_todo`) — pre-trip task checklist (book tickets, IDP, currency) as a build output.
-- **Packing templates** (`apply_packing_template`) — reusable packing lists instead of ad-hoc items each trip.
-- **Collaboration** (`create_collab_poll`, `send_collab_message`) — group decisions and chat for shared trips.
-- **Split budgets & settle-up** (`create_budget_item_with_members`, settlements) — per-member expense splits for group trips.
-
-## Troubleshooting
-
-### Verify MCP servers are connected
-
-In Claude Code, type `/mcp` to see the status of all MCP servers. All three should show as connected.
-
-### TREK MCP hangs or stops responding
-
-The TREK MCP server accepts a limited number of connections. If it becomes unresponsive (tools time out or hang indefinitely), restart the TREK Docker container:
-
-```bash
-docker restart <your-trek-container>
-```
-
-This is the only way to reset the connections for now.
-
-### TREK tools not appearing
-
-If TREK tools aren't available after starting Claude Code:
-
-1. **Check your `.env`** — make sure `TREK_URL` and `TREK_MCP_TOKEN` are set correctly
-2. **Test the connection manually:**
-   ```bash
-   ./core/trek-mcp.sh
-   ```
-   This should start without errors. Press `Ctrl+C` to stop it.
-3. **Verify TREK MCP addon is enabled** — In TREK: Admin Panel → Addons → MCP should be toggled on
-4. **Regenerate the token** — In TREK: Settings → MCP Configuration → generate a new token and update `.env`
-
-### Google Maps not working
-
-If Google Maps tools aren't available after starting Claude Code:
-
-1. **Check your `.env`** — make sure `GOOGLE_MAPS_API_KEY` is set
-2. **Test the connection manually:**
-   ```bash
-   ./core/google-maps-mcp.sh
-   ```
-   This should start without errors. Press `Ctrl+C` to stop it.
-3. **Enable the required APIs** in [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services:
-   - **Places API** (place search and details — ratings, reviews, opening hours)
-   - **Directions API** (routes and drive times)
-   - **Geocoding API** (address lookups)
-
-### Node.js errors
-
-The MCP servers require Node.js 22+ and `npx`. If you use nvm, run `nvm install` from the project root — the `.nvmrc` pins the correct version. Both MCP launcher scripts load nvm automatically so `npx` is available even in non-interactive shells.
-
-## Project Structure
-
-```
-.claude/
-  settings.json                # MCP server configurations (auto-loaded by Claude Code)
-  skills/plan-trip/SKILL.md          # /plan-trip — research & plan an itinerary
-  skills/find-accommodation/SKILL.md # /find-accommodation — research & pick hotels for a planned trip
-  skills/build-trip/SKILL.md         # /build-trip — create a planned trip in TREK
-profile/
-  USER_PROFILE.md              # Personal defaults pre-loaded by /plan-trip (optional)
-  README.md                    # How the profile is used
-core/
-  trek-mcp.sh                  # TREK MCP server launcher (reads config from .env)
-  google-maps-mcp.sh           # Google Maps MCP server launcher (reads API key from .env)
-  system_prompt.txt            # Trip creation workflow and JSON backup schema
-plans/                         # Local trip plan JSONs (gitignored)
-```
+- **Servers connected?** Type `/mcp` in Claude Code.
+- **TREK MCP hangs.** The TREK MCP server accepts a limited number of connections. Restart the TREK container: `docker restart <your-trek-container>`.
+- **TREK or Google Maps tools missing.** Check `.env`, then run `./core/trek-mcp.sh` or `./core/google-maps-mcp.sh` by hand; each should start without errors (`Ctrl+C` to stop). In TREK, check that the MCP addon is on, or generate a new token.
+- **Node.js errors.** The launchers need Node.js 22+ and `npx`; both load nvm themselves.

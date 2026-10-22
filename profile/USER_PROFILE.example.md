@@ -28,8 +28,30 @@ Edit values below. Remove or leave blank anything you don't want pre-filled. Com
 ## Transport
 
 - **Default transport mode:** own car for regional trips, rental car for long-haul
-- **Own vehicle:** VW ID.4 (EV, needs CCS charging)
+- **Own vehicle:** Polestar 2 MY25 Long Range Dual Motor (EV, CCS charging)
 - **Driver's license countries:** CH, EU
+
+## Driving settings
+
+**Proposed per trip, confirmed by Roald at checkpoint 0.** These are starting values, not defaults that are copied silently. `trip-brief` puts this table into the checkpoint 0 question for every new trip, adjusted for what the brief says (a ferry to avoid, a hire car, a different pace) with a reason next to each changed row. Only the set Roald confirms is written to the trip with `update_roadtrip_settings`.
+
+| Setting | Starting value | Note |
+|---|---|---|
+| `roadtrip_vehicle` | `electric` | Polestar 2 MY25 Long Range Dual Motor |
+| `roadtrip_battery_kwh` | 79 | usable capacity |
+| `roadtrip_kwh_per_100` | 21 | motorway at 120 to 130 km/h, planned on the safe side |
+| `roadtrip_battery_degradation` | 3 | percent |
+| `roadtrip_fill_percent` | 80 | |
+| `roadtrip_leg_minutes` | 150 | |
+| `roadtrip_day_minutes` | 480 | |
+| `roadtrip_day_start` / `roadtrip_day_end` | 09:00 / 19:00 | |
+| `roadtrip_day_end_mode` | `stop` | |
+| `roadtrip_hotel_bookends` | `true` | days start and end at the stay once stays exist |
+| `roadtrip_avoid` | `""` | set `ferry` or `toll` per trip when needed |
+| `roadtrip_service_stops_in_days` | `true` (proposed) | not in Roald's list; decided per trip |
+| `roadtrip_show_hazards` | `true` (proposed) | not in Roald's list; decided per trip |
+
+With these values TREK derives about 290 km between charging stops.
 
 ## Budget
 

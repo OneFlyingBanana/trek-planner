@@ -1,101 +1,49 @@
----
-description: "Scientific Method workflow. Always active."
----
+# trek-planner
 
-# Workflow: The Scientific Method
+Skills that plan a trip and build it into Roald's TREK instance. Agents run them from Paperclip; Roald can still run them on his laptop (README, "Laptop mode").
 
-CRITICAL: "VERIFY MY DATA" means running tests, checking outputs, and gathering empirical evidence. Assumptions without empirical validation violate scientific methodology.
+## Where things live
 
-ASK as in: ASK the Data, ASK the TEST RESULTS, ASK the USER, ASK the Web Research tool, etc.
+- `plans/<slug>/` – one folder per trip, committed: brief, research notes, plan JSON, validation, TREK manifest, build report, roadbook, lessons.
+- `.claude/skills/<skill>/SKILL.md` – the skills. Target flow: `trip-brief` → `research-itinerary` → `validate-plan` → `build-trip --skeleton` → `route-check` → `find-stays` → `validate-plan` → `generate-roadbook` → `build-trip --complete` → `trip-retro`. Until those land, the repo has `plan-trip`, `find-accommodation`, `build-trip` and `generate-roadbook`.
+- `profile/USER_PROFILE.md` – Roald's defaults (gitignored); `profile/USER_PROFILE.example.md` shows the shape.
+- `docs/` – pacing thresholds, call budgets, sources, lessons, skill changelog.
 
-## Mandatory Workflow
+Every skill states the files it found, writes its output into `plans/<slug>/`, and ends with the files it wrote and the exact next command. If an input is missing, it stops and names the skill that produces it.
 
-ANY and ALL work MUST follow ONLY this WORKFLOW or a serious breach of PROTOCOL will have occurred.
+## Board rules (Paperclip's `TOOLS.md`, outside this repo, wins over this file)
 
-### 1. GATHER DATA
+- Work on a branch and open a pull request. Never push to `main`. Roald merges.
+- End every commit with `Assisted-by: Paperclip <role>` and `Co-Authored-By: Paperclip <noreply@paperclip.ing>`.
+- TREK is Roald's real planner. Every trip an agent creates is titled `[paperclip] <title>`. Write only to trips whose title starts with `[paperclip] `; read others, never edit them.
+- Never call TREK delete, share, member or user/instance settings tools; Paperclip blocks them. Do not retry a blocked call. List what Roald should remove under **Safe to delete** in the issue.
+- `update_roadtrip_settings` is a trip setting and allowed, but only with the values Roald confirmed at checkpoint 0.
+- Google-billed calls (`search_place` with `provider: "google"`, `get_place_details`) only when the task needs them, never in a loop. Limits: `docs/call-budgets.md`.
+- ArtCraft first: use the `*craft-cli` apps for documents, spreadsheets, PDFs and images. Run `<app>-cli --help` first; if an app fails, say so and name the fallback.
+- Airbnb, AirTrail and Dawarich are not used (`docs/sources.md`).
+- Secrets come only as environment variables. Never print or commit them.
 
-Gather data SCIENTIFICALLY from PRIMARY SOURCES:
-- The `docs/` folder in the project root if there is one
-- The codebase itself
-- The USER (who can also act as a go-between for web research)
+## TREK timeout and retry rule
 
-### 2. PLAN
+Paperclip cuts every TREK call at 10 s and reports `mcp_remote_fetch_failed`.
 
-Write an `ACTION_PLAN.md` in the ROOT folder and present it to the USER for APPROVAL.
-TAKE NO FURTHER ACTION WITHOUT USER APPROVAL.
+1. Treat `mcp_remote_fetch_failed` as a timeout, not a tool error.
+2. Wait about 30 s, then repeat the same call with the same arguments **once**.
+3. If the retry fails too, record the tool, the arguments (no secrets) and both timestamps in the step's output file (`plans/<slug>/validation.md`, `plans/<slug>/build-report.md` or `plans/<slug>/trek-route.json`), use the fallback the skill names, and go on. Never retry a third time.
+4. "Remote MCP session expired" after a TREK restart: retry once.
 
-Plan approval is only valid if the user responds with exactly: **"I approve your plan, proceed."**
+A retried write is safe only because the TREK manifest makes writes idempotent: look for the item's `plan:<plan_id>/<item_id>` note in `get_trip_summary` before writing it again. The first `calculate_roadtrip` after a change is the slow one, so make it early in a run.
 
-ACTION_PLAN.md template requirements:
-- Add **Branch:** [branch-name] field after Date
-- Add **Related Work:** [previous work summaries] if applicable
+## Checkpoints
 
-### 3. EXECUTE
+Roald decides at three points, all in Paperclip (issue questions, approvals, comments), never by chat phrases:
 
-Execute the approved ACTION_PLAN.md in STAGES:
-- Update each TASK's status upon completion
-- Add a detailed WORK SUMMARY for each STAGE upon STAGE completion
-- For any code changes, RUN all relevant tests and INCLUDE test results as MANDATORY VERIFICATION
-- Continue until every TASK and STAGE is marked COMPLETE
+0. **Brief and driving settings** – after `trip-brief`: one question set with the trip's proposed driving settings and any missing brief field. No settings reach TREK before he confirms.
+1. **Plan approval** – a Paperclip approval on the plan PR, with the roadbook PDF attached and the `[paperclip]` draft trip in TREK.
+2. **Trip review** – after the complete build, Roald comments on the issue; fixes go into a follow-up build.
 
-### 4. VERIFY
+Between checkpoints, proceed unless Roald objects on the issue.
 
-Verify each STAGE's WORK SUMMARY and add WRITTEN PROOF to the ACTION_PLAN.md:
-- Use REAL ANNOTATIONS to show LINE BY LINE that every TASK and STAGE is INDISPUTABLY COMPLETE
-- WRITTEN PROOF MUST INCLUDE: test execution output, and performance measurements where applicable
-- Append insights, learnings, surprises, solutions, or other KNOWLEDGE TRANSFER for future developers
+## Write files, not prose
 
-Verification checklist:
-- Technical validation (tests, functionality)
-- Documentation of results
-- Self-verification against protocol
-
-#### Code Comment Cleanup (part of Verification)
-
-After verification, go through the code and clean up comments:
-- Avoid over-commenting. Prefer better function names, variable names, or docstrings over comments.
-- Self-descriptive code is preferable, but don't avoid comments when they genuinely clarify intent.
-- Refactor agent-added comments into more descriptive, readable code where possible.
-- Follow Python PEP comment guidelines.
-- Comments that contradict the code are worse than no comments. Always keep comments up-to-date when code changes.
-
-### 5. APPROVE
-
-PRESENT work to the USER for APPROVAL. **STOP. DO NOT PROCEED** until explicit USER approval is received.
-
-Work approval is only valid if the user responds with exactly: **"I approve your work, proceed."**
-
-### 6. ARCHIVE
-
-Upon receiving explicit USER APPROVAL, and ONLY then:
-1. Rename `ACTION_PLAN.md` as `[DATE][TASK]WORK_SUMMARY.md`
-2. Move to `DEV_LOGS/` folder
-3. Confirm LOG matches completed ACTION_PLAN.md
-4. DELETE the original `ACTION_PLAN.md` file
-5. Propose a commit message based on best practices (see `commit-message` skill)
-
-CRITICAL: Never move ACTION_PLAN.md to DEV_LOGS without explicit USER approval.
-CRITICAL: Always delete original ACTION_PLAN.md after successful archiving.
-
-## WORK_SUMMARY Documentation Requirements
-
-- Add **Branch:** field in header section
-- Add **Branch Duration:** (start date - "in progress") for active branches
-- Add **Related Work:** cross-references to other work on same branch
-
-<protocol-summary>
-## Protocol Summary
-
-1. **GATHER DATA** — Read primary sources (docs/, codebase, user). Never assume.
-2. **PLAN** — Write ACTION_PLAN.md, present to user. STOP until user responds: "I approve your plan, proceed."
-3. **EXECUTE** — Work in stages. Update task status. Run tests for every code change. Include test results.
-4. **VERIFY** — Add written proof (test output, annotations) to ACTION_PLAN.md. Clean up code comments.
-5. **APPROVE** — Present to user. STOP until user responds: "I approve your work, proceed."
-6. **ARCHIVE** — Rename to [DATE][TASK]WORK_SUMMARY.md, move to DEV_LOGS/, delete original ACTION_PLAN.md.
-
-**CRITICAL constraints:**
-- NEVER proceed past PLAN or APPROVE without explicit user approval using the exact phrases above
-- NEVER move ACTION_PLAN.md to DEV_LOGS/ without explicit user approval
-- ALWAYS delete original ACTION_PLAN.md after successful archiving
-- "VERIFY MY DATA" means running tests and gathering empirical evidence — assumptions without validation violate protocol
-</protocol-summary>
+Results live in files under `plans/<slug>/`, not in chat. Every trip run ends with entries in `plans/<slug>/lessons.md`, copied to `docs/lessons/`. Every skill change goes through a PR and a line in `docs/skills/CHANGELOG.md`.
