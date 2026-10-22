@@ -208,4 +208,5 @@ core/
 plans/                         # Local trip plan JSONs (gitignored)
 .github/workflows/ci.yml       # CI: shell syntax and JSON parse checks on pull requests to main
 CONTRIBUTING.md                # Branch, pull request, review, merge and commit rules
+.editorconfig                  # Advisory editor style: utf-8, LF, final newline, 2-space indent
 ```

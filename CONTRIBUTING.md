@@ -41,3 +41,11 @@ Only the Engineering Lead merges, and never with `gh pr merge --admin`.
   `Assisted-by: Paperclip <role>`, for example
   `Assisted-by: Paperclip Senior Developer`.
 - Commits made by Roald do not need the trailer.
+
+## 6. Editor settings
+
+The root `.editorconfig` records the style the repo already uses: UTF-8, LF line
+endings, a final newline, trailing whitespace trimmed, and 2-space indentation.
+It is advisory. Editors that read it apply these rules to new edits; it does not
+reformat existing files. CI does not read it, so a pull request is not checked
+against it.
