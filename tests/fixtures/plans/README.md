@@ -15,6 +15,14 @@ npx --yes ajv-cli@5 validate -s schema/plan.v2.schema.json -d tests/fixtures/pla
 npx --yes ajv-cli@5 validate -s schema/plan.v2.schema.json -d tests/fixtures/plans/broken-v2.json --all-errors --errors=text
 ```
 
+Run the validator on any of them; it prints `validation.md` and exits 1 on errors:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python scripts/validate_plan.py tests/fixtures/plans/valid-3day-polestar.json --for-skeleton -o validation.md
+python -m pytest
+```
+
 ## valid-3day-polestar.json
 
 Chamoson → Château de Chillon → Annecy (night 1) → Sallanches → Mer de Glace → Chamonix (night 2) → Aiguille du Midi → Martigny → Chamoson. Own car, the Polestar 2.
@@ -61,4 +69,4 @@ Every defect and the schema rule that catches it:
 | `/budget/0` | category `Hotels`, negative amount, no `basis` or `confidence` | enum, minimum, required |
 | `/budget_total/amount` | string | type |
 
-What the schema cannot see and the validator (1.2b) must check: night coverage, Day 1 starting at `starting_location`, two places on `move` days, budget rows summing to `budget_total`, leg ids pointing at items of the same day, and `confirmed_on` being set before `build-trip --skeleton`.
+What the schema cannot see and the validator (1.2b) checks: night coverage, Day 1 starting at `starting_location`, two places on `move` days, budget rows summing to `budget_total`, leg ids pointing at items of the same day, and `confirmed_on` being set before `build-trip --skeleton`.
