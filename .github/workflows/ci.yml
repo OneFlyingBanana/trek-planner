@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Shell syntax
-        run: bash -n setup-mcp.sh core/*.sh
+        run: for f in setup-mcp.sh core/*.sh; do bash -n "$f"; done
       - name: JSON parse
         run: |
           python3 -m json.tool .mcp.json > /dev/null
