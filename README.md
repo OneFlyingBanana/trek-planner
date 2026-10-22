@@ -186,6 +186,10 @@ If Google Maps tools aren't available after starting Claude Code:
 
 The MCP servers require Node.js 22+ and `npx`. If you use nvm, run `nvm install` from the project root — the `.nvmrc` pins the correct version. Both MCP launcher scripts load nvm automatically so `npx` is available even in non-interactive shells.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how a change reaches `main`: branch, pull request, review, merge and commit messages. A GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every pull request to `main`. It checks the shell syntax of `setup-mcp.sh` and `core/*.sh`, and that `.mcp.json` and `.claude/settings.json` parse as JSON.
+
 ## Project Structure
 
 ```
@@ -202,4 +206,6 @@ core/
   google-maps-mcp.sh           # Google Maps MCP server launcher (reads API key from .env)
   system_prompt.txt            # Trip creation workflow and JSON backup schema
 plans/                         # Local trip plan JSONs (gitignored)
+.github/workflows/ci.yml       # CI: shell syntax and JSON parse checks on pull requests to main
+CONTRIBUTING.md                # Branch, pull request, review, merge and commit rules
 ```
