@@ -1,0 +1,7 @@
+# Fixture TREK tool list for tests/test_lint_skills.py.
+# Hyphenated names are accepted, as Paperclip lists them that way.
+list-trips
+get_trip_summary
+create_place
+assign_place_to_day
+update_roadtrip_settings
