@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "title": "Legacy v1 fixture",
+  "description": "A plan in the v1 shape written by the old /plan-trip skill. Fails the v2 schema (schema_version, no plan_id, trek_title or brief; accommodations instead of stays; items without ids). The validator accepts it with warnings.",
+  "start_date": "2026-06-15",
+  "end_date": "2026-06-16",
+  "currency": "EUR",
+  "travelers": 2,
+  "transport_mode": "rental car",
+  "starting_location": {
+    "name": "Home, Chamoson",
+    "address": "1955 Chamoson, Switzerland",
+    "lat": 46.2017,
+    "lng": 7.226
+  },
+  "days": [
+    {
+      "day_number": 1,
+      "title": "Day 1: Arrival",
+      "items": [
+        {
+          "type": "place",
+          "name": "Home, Chamoson",
+          "address": "1955 Chamoson, Switzerland",
+          "lat": 46.2017,
+          "lng": 7.226,
+          "time_start": "09:00"
+        },
+        {
+          "type": "place",
+          "name": "Eiffel Tower",
+          "description": "Iconic iron lattice tower on the Champ de Mars",
+          "address": "Champ de Mars, 5 Av. Anatole France, 75007 Paris",
+          "lat": 48.8584,
+          "lng": 2.2945,
+          "time_start": "15:00",
+          "time_end": "17:00",
+          "notes": "Go early to avoid crowds. Entry: 26 EUR.",
+          "website": "https://www.toureiffel.paris",
+          "phone": "+33 892 70 12 39"
+        },
+        {
+          "type": "note",
+          "text": "30 min drive to restaurant",
+          "icon": "🚗"
+        }
+      ]
+    },
+    {
+      "day_number": 2,
+      "title": "Day 2: Return",
+      "items": [
+        {
+          "type": "place",
+          "name": "Home, Chamoson",
+          "address": "1955 Chamoson, Switzerland",
+          "lat": 46.2017,
+          "lng": 7.226,
+          "time_start": "18:00"
+        }
+      ]
+    }
+  ],
+  "accommodations": [
+    {
+      "name": "Hotel Example Paris",
+      "address": "1 Rue Example, 75007 Paris",
+      "lat": 48.857,
+      "lng": 2.295,
+      "check_in_day": 1,
+      "check_out_day": 2,
+      "check_in_time": "15:00",
+      "check_out_time": "11:00",
+      "price_per_night": 180,
+      "nights": 1,
+      "total_price": 180,
+      "rating": 4.5,
+      "source": "google_maps",
+      "notes": "Breakfast included"
+    }
+  ],
+  "budget": [
+    {
+      "category": "Transport",
+      "name": "Fuel + tolls (1200 km)",
+      "amount": 200,
+      "notes": "Fuel ~150 EUR + tolls ~50 EUR"
+    },
+    {
+      "category": "Accommodation",
+      "name": "Hotel Example Paris (1 night, Day 1-2)",
+      "amount": 180,
+      "notes": "180 EUR × 1 night"
+    },
+    {
+      "category": "Food",
+      "name": "Food & drinks (2 days, 2 persons)",
+      "amount": 200,
+      "notes": "~50/person/day mid-range"
+    }
+  ],
+  "packing": [
+    { "name": "Passport", "category": "Documents" }
+  ],
+  "collab_notes": [],
+  "transport": [],
+  "reservations": [
+    {
+      "type": "restaurant",
+      "title": "Dinner at Le Comptoir",
+      "date": "2026-06-15",
+      "time": "20:00",
+      "confirmation": "XYZ789",
+      "price": 90,
+      "notes": "Table for 2, terrace requested"
+    }
+  ]
+}

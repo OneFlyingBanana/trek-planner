@@ -1,0 +1,603 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/OneFlyingBanana/trek-planner/schema/plan.v2.schema.json",
+  "title": "trek-planner plan v2",
+  "description": "The handoff contract between the trek-planner skills (trip-brief, research-itinerary, route-check, find-stays, build-trip, generate-roadbook). Design: ISD-4 revision 4, sections 2.5, 4.3 and 5.2. Structural checks live here; cross-field checks (night coverage, budget sums, Day 1 starts at home, confirmed_on before build-trip --skeleton) live in scripts/validate_plan.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan_id",
+    "title",
+    "trek_title",
+    "start_date",
+    "end_date",
+    "currency",
+    "travelers",
+    "starting_location",
+    "brief",
+    "days",
+    "budget"
+  ],
+  "anyOf": [
+    { "required": ["stays"] },
+    { "required": ["accommodations"] }
+  ],
+  "not": {
+    "required": ["stays", "accommodations"]
+  },
+  "properties": {
+    "schema_version": {
+      "const": 2,
+      "description": "Always 2 for this schema. v1 plans (schema_version 1, accommodations[], no plan_id or brief) are accepted by the validator with warnings, not by this schema."
+    },
+    "plan_id": {
+      "$ref": "#/definitions/slug",
+      "description": "Stable slug for the trip. Idempotency key for TREK: build-trip stores plan:<plan_id>/<item_id> in place_notes."
+    },
+    "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+    "trek_title": {
+      "type": "string",
+      "pattern": "^\\[paperclip\\] \\S.*$",
+      "maxLength": 200,
+      "description": "Title of the trip in TREK. Always '[paperclip] ' + title. Agents may only write to trips with this prefix."
+    },
+    "description": { "type": "string", "maxLength": 2000 },
+    "start_date": { "$ref": "#/definitions/date" },
+    "end_date": { "$ref": "#/definitions/date" },
+    "currency": { "$ref": "#/definitions/currency" },
+    "travelers": { "type": "integer", "minimum": 1 },
+    "transport_mode": {
+      "type": "string",
+      "description": "Overall travel style of the trip (own car, rental car, public transit, mix). Unrelated to transport[] bookings."
+    },
+    "starting_location": { "$ref": "#/definitions/geo_place" },
+    "brief": { "$ref": "#/definitions/brief" },
+    "days": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/day" }
+    },
+    "stays": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/stay" },
+      "description": "One entry per stay. Empty until find-stays has run. Replaces v1 accommodations[]; the old name is still accepted."
+    },
+    "accommodations": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/stay" },
+      "description": "v1 name for stays[]. Use stays[] in new plans."
+    },
+    "transport": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/transport" }
+    },
+    "reservations": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/reservation" }
+    },
+    "budget": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/budget_row" }
+    },
+    "budget_total": {
+      "type": "object",
+      "description": "Headline total in the plan currency. The validator checks budget[] rows sum to amount.",
+      "required": ["amount"],
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "per_person": { "type": "number", "minimum": 0 }
+      }
+    },
+    "todos": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/todo" }
+    },
+    "packing": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/packing_item" }
+    },
+    "collab_notes": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/collab_note" }
+    }
+  },
+  "definitions": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$"
+    },
+    "time": {
+      "type": "string",
+      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+    },
+    "time_or_empty": {
+      "anyOf": [
+        { "const": "" },
+        { "$ref": "#/definitions/time" }
+      ]
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+    "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+    "item_id": {
+      "type": "string",
+      "pattern": "^d\\d{2}-p\\d{2}$",
+      "description": "Day-scoped item id: d<day two digits>-p<position two digits>, for example d03-p02."
+    },
+    "value_source": {
+      "type": "string",
+      "enum": ["profile", "issue", "answer"],
+      "description": "Where a brief value came from: the user profile, the issue text, or Roald's checkpoint 0 answer."
+    },
+    "geo_place": {
+      "type": "object",
+      "required": ["name", "lat", "lng"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "address": { "type": "string" },
+        "lat": { "$ref": "#/definitions/latitude" },
+        "lng": { "$ref": "#/definitions/longitude" }
+      }
+    },
+    "brief": {
+      "type": "object",
+      "description": "Trip parameters confirmed with Roald at checkpoint 0 (design 2.4). Produced by trip-brief.",
+      "required": ["travelers", "pace", "vehicle", "driving_settings", "sources"],
+      "properties": {
+        "travelers": { "type": "integer", "minimum": 1 },
+        "pace": {
+          "type": "string",
+          "enum": ["slow", "balanced", "fast"]
+        },
+        "vehicle": { "$ref": "#/definitions/vehicle" },
+        "day_start": { "$ref": "#/definitions/time" },
+        "day_end": { "$ref": "#/definitions/time" },
+        "max_driving_min_per_day": { "type": "integer", "minimum": 0, "maximum": 1440 },
+        "max_driving_min_per_leg": { "type": "integer", "minimum": 0, "maximum": 1440 },
+        "avoid": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "enum": ["toll", "motorway", "ferry"] }
+        },
+        "budget_tier": {
+          "type": "string",
+          "enum": ["budget", "mid-range", "luxury", "mix"]
+        },
+        "must": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "avoid_list": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Things Roald does not want in the trip (places, activities, road types other than avoid[])."
+        },
+        "pets": { "type": "string" },
+        "notes": { "type": "string" },
+        "sources": {
+          "type": "object",
+          "description": "Per brief field, where its value came from. Keys are brief field names.",
+          "additionalProperties": { "$ref": "#/definitions/value_source" }
+        },
+        "driving_settings": { "$ref": "#/definitions/driving_settings" }
+      }
+    },
+    "vehicle": {
+      "type": "object",
+      "required": ["type", "ev"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1, "description": "Make and model, or 'hire car'." },
+        "ev": { "type": "boolean" },
+        "range_km": { "type": "number", "minimum": 0 },
+        "battery_kwh": { "type": "number", "minimum": 0 },
+        "kwh_per_100": { "type": "number", "minimum": 0 },
+        "litres_per_100": { "type": "number", "minimum": 0 },
+        "fill_percent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "charging_socket": { "type": "string", "description": "For EVs: CCS, Type 2, CHAdeMO, NACS." },
+        "min_kw": { "type": "number", "minimum": 0, "description": "Minimum charger power the corridor search asks for." }
+      }
+    },
+    "driving_settings": {
+      "type": "object",
+      "description": "The exact update_roadtrip_settings payload for this trip, plus who confirmed it and when. build-trip --skeleton writes settings only when confirmed_on is a date (validator check, design 3.3 settings guard).",
+      "required": ["settings", "confirmed_on", "confirmed_by"],
+      "additionalProperties": false,
+      "properties": {
+        "settings": { "$ref": "#/definitions/roadtrip_settings" },
+        "confirmed_on": {
+          "anyOf": [
+            { "type": "null" },
+            { "$ref": "#/definitions/date" }
+          ],
+          "description": "Date of Roald's checkpoint 0 answer. null until he has answered."
+        },
+        "confirmed_by": {
+          "anyOf": [
+            { "type": "null" },
+            { "const": "roald" }
+          ]
+        },
+        "confirmed_ref": {
+          "type": "string",
+          "description": "Where the confirmation is recorded: the Paperclip issue and interaction, or the design approval for the fixture trip."
+        }
+      }
+    },
+    "roadtrip_settings": {
+      "type": "object",
+      "description": "Mirror of the settings argument of TREK's update_roadtrip_settings tool, same keys and ranges. Keep this block copyable into the tool call unchanged.",
+      "additionalProperties": false,
+      "properties": {
+        "roadtrip_vehicle": { "type": "string", "enum": ["", "combustion", "electric"] },
+        "roadtrip_battery_kwh": { "type": "number", "minimum": 0, "maximum": 10000 },
+        "roadtrip_kwh_per_100": { "type": "number", "minimum": 0, "maximum": 1000 },
+        "roadtrip_battery_degradation": { "type": "number", "minimum": 0, "maximum": 100 },
+        "roadtrip_tank_litres": { "type": "number", "minimum": 0, "maximum": 10000 },
+        "roadtrip_litres_per_100": { "type": "number", "minimum": 0, "maximum": 1000 },
+        "roadtrip_range_km": { "type": "number", "minimum": 0, "maximum": 40000 },
+        "roadtrip_fill_percent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "roadtrip_leg_minutes": { "type": "number", "minimum": 0, "maximum": 1440 },
+        "roadtrip_day_minutes": { "type": "number", "minimum": 0, "maximum": 1440 },
+        "roadtrip_day_start": { "$ref": "#/definitions/time_or_empty" },
+        "roadtrip_day_end": { "$ref": "#/definitions/time_or_empty" },
+        "roadtrip_day_end_mode": { "type": "string", "enum": ["route", "stop"] },
+        "roadtrip_hotel_bookends": { "type": "boolean" },
+        "roadtrip_avoid": {
+          "type": "string",
+          "maxLength": 32,
+          "pattern": "^$|^(toll|motorway|ferry)(,(toll|motorway|ferry))*$"
+        },
+        "roadtrip_service_stops_in_days": { "type": "boolean" },
+        "roadtrip_show_hazards": { "type": "boolean" },
+        "roadtrip_connect_days": { "type": "boolean" },
+        "roadtrip_day_colors": { "type": "boolean" }
+      }
+    },
+    "day": {
+      "type": "object",
+      "required": ["day_number", "title", "base", "move", "items"],
+      "properties": {
+        "day_number": { "type": "integer", "minimum": 1 },
+        "date": { "$ref": "#/definitions/date" },
+        "title": { "type": "string", "minLength": 1 },
+        "base": {
+          "$ref": "#/definitions/geo_place",
+          "description": "Where the night is spent (the last day: where the trip ends)."
+        },
+        "move": {
+          "type": "boolean",
+          "description": "true when the day relocates between bases. Move days need at least two places so TREK draws the route (validator check)."
+        },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/day_item" }
+        },
+        "legs": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/leg" }
+        },
+        "vias": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/via" }
+        },
+        "day_end": {
+          "$ref": "#/definitions/day_end",
+          "description": "Override when the plan ends the day mid-leg (set_day_boundary)."
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "day_item": {
+      "oneOf": [
+        { "$ref": "#/definitions/place_item" },
+        { "$ref": "#/definitions/note_item" }
+      ]
+    },
+    "place_item": {
+      "type": "object",
+      "required": ["id", "type", "name", "lat", "lng", "origin"],
+      "properties": {
+        "id": { "$ref": "#/definitions/item_id" },
+        "type": { "const": "place" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "address": { "type": "string", "maxLength": 500 },
+        "lat": { "$ref": "#/definitions/latitude" },
+        "lng": { "$ref": "#/definitions/longitude" },
+        "time_start": { "$ref": "#/definitions/time" },
+        "time_end": { "$ref": "#/definitions/time" },
+        "duration_min": { "type": "integer", "minimum": 0 },
+        "stop_type": {
+          "type": "string",
+          "enum": ["fuel", "charging", "rest_area", "campsite", "restaurant", "sights", "hotel"],
+          "description": "Marks a service stop on the drive (TREK stop_type). Leave out for an ordinary place."
+        },
+        "price": { "type": "number", "minimum": 0 },
+        "currency": { "$ref": "#/definitions/currency" },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "website": { "type": "string", "maxLength": 500 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "source": { "$ref": "#/definitions/place_source" },
+        "verified_on": { "$ref": "#/definitions/date" },
+        "origin": {
+          "type": "string",
+          "enum": ["research", "collection", "maps_link", "corridor", "roald"],
+          "description": "Which step put the place in the plan."
+        }
+      }
+    },
+    "place_source": {
+      "type": "object",
+      "description": "Identifiers that pin the place: at least one of them.",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "osm_id": { "type": "string", "pattern": "^(node|way|relation):\\d+$" },
+        "google_place_id": { "type": "string", "minLength": 1 },
+        "collection_place_id": { "type": "integer", "minimum": 1 },
+        "url": { "type": "string", "pattern": "^https?://" }
+      }
+    },
+    "note_item": {
+      "type": "object",
+      "required": ["type", "text"],
+      "properties": {
+        "id": { "$ref": "#/definitions/item_id" },
+        "type": { "const": "note" },
+        "text": { "type": "string", "minLength": 1 },
+        "icon": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8,
+          "description": "A single emoji (TREK renders it as-is), never a keyword."
+        }
+      }
+    },
+    "leg": {
+      "type": "object",
+      "required": ["from_id", "to_id", "km", "min", "method"],
+      "properties": {
+        "from_id": { "$ref": "#/definitions/item_id" },
+        "to_id": { "$ref": "#/definitions/item_id" },
+        "km": { "type": "number", "minimum": 0 },
+        "min": { "type": "number", "minimum": 0 },
+        "method": {
+          "type": "string",
+          "enum": ["estimate", "trek", "transit_tool", "roald"],
+          "description": "estimate: great-circle formula before the skeleton build; trek: calculate_roadtrip; transit_tool: search_transit_routes; roald: given by Roald."
+        },
+        "arrival": { "$ref": "#/definitions/time" },
+        "departure": { "$ref": "#/definitions/time" },
+        "pauses": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/pause" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Calculator warnings copied verbatim (driving limit, fuel, routing failure)."
+        }
+      },
+      "if": {
+        "properties": { "method": { "const": "trek" } },
+        "required": ["method"]
+      },
+      "then": {
+        "required": ["arrival"]
+      }
+    },
+    "pause": {
+      "type": "object",
+      "required": ["kind", "min"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["charging", "fuel", "rest", "overnight", "other"] },
+        "min": { "type": "number", "minimum": 0 },
+        "at_item_id": { "$ref": "#/definitions/item_id" },
+        "notes": { "type": "string" }
+      }
+    },
+    "via": {
+      "type": "object",
+      "required": ["lat", "lng", "after_item_id", "reason"],
+      "properties": {
+        "lat": { "$ref": "#/definitions/latitude" },
+        "lng": { "$ref": "#/definitions/longitude" },
+        "after_item_id": { "$ref": "#/definitions/item_id" },
+        "reason": { "type": "string", "minLength": 1, "description": "Scenic route name or Roald's request; the roadbook prints it." }
+      }
+    },
+    "day_end": {
+      "type": "object",
+      "required": ["lat", "lng", "reason"],
+      "properties": {
+        "lat": { "$ref": "#/definitions/latitude" },
+        "lng": { "$ref": "#/definitions/longitude" },
+        "after_item_id": { "$ref": "#/definitions/item_id" },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "stay_core": {
+      "type": "object",
+      "required": ["name", "lat", "lng", "price_per_night", "total_price"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "address": { "type": "string", "maxLength": 500 },
+        "lat": { "$ref": "#/definitions/latitude" },
+        "lng": { "$ref": "#/definitions/longitude" },
+        "price_per_night": { "type": "number", "minimum": 0 },
+        "total_price": { "type": "number", "minimum": 0 },
+        "rating": { "type": "number", "minimum": 0, "maximum": 5 },
+        "review_count": { "type": "integer", "minimum": 0 },
+        "source": {
+          "type": "string",
+          "description": "Where the candidate came from: collection, osm, corridor, google_maps, web."
+        },
+        "place_source": { "$ref": "#/definitions/place_source" },
+        "price_source_url": { "type": "string", "pattern": "^https?://" },
+        "price_checked_on": { "$ref": "#/definitions/date" },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "cancellation": { "type": "string", "description": "Cancellation terms as read from the price source." },
+        "booking_deadline": { "$ref": "#/definitions/date" },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "website": { "type": "string", "maxLength": 500 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "reason": { "type": "string", "description": "One line on why this stay was picked or is a runner-up." }
+      }
+    },
+    "stay": {
+      "allOf": [
+        { "$ref": "#/definitions/stay_core" },
+        {
+          "type": "object",
+          "required": ["check_in_day", "check_out_day", "nights"],
+          "properties": {
+            "check_in_day": { "type": "integer", "minimum": 1 },
+            "check_out_day": { "type": "integer", "minimum": 2 },
+            "check_in_time": { "$ref": "#/definitions/time" },
+            "check_out_time": { "$ref": "#/definitions/time" },
+            "nights": { "type": "integer", "minimum": 1 },
+            "deliberate_distance": {
+              "type": "boolean",
+              "description": "true when the stay is knowingly more than 30 km from the day's calculated end (validator skips the distance check)."
+            },
+            "alternatives": {
+              "type": "array",
+              "maxItems": 2,
+              "items": { "$ref": "#/definitions/stay_core" },
+              "description": "Up to two runner-ups with the same price fields."
+            }
+          }
+        }
+      ]
+    },
+    "transport": {
+      "type": "object",
+      "required": ["type", "title"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["flight", "train", "bus", "car", "taxi", "bicycle", "cruise", "ferry", "transport_other"]
+        },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "from": { "$ref": "#/definitions/transport_endpoint" },
+        "to": { "$ref": "#/definitions/transport_endpoint" },
+        "stops": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/transport_endpoint" }
+        },
+        "confirmation": { "type": "string", "maxLength": 100 },
+        "price": { "type": "number", "minimum": 0 },
+        "currency": { "$ref": "#/definitions/currency" },
+        "url": { "type": "string", "maxLength": 2000 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "source": {
+          "type": "string",
+          "enum": ["issue", "pdf", "roald"],
+          "description": "issue: typed in the brief; pdf: read from an attached booking PDF; roald: given later by Roald."
+        },
+        "source_file": { "type": "string", "description": "File name of the attached booking PDF when source is pdf." }
+      },
+      "if": {
+        "properties": { "source": { "const": "pdf" } },
+        "required": ["source"]
+      },
+      "then": {
+        "required": ["source_file"]
+      }
+    },
+    "transport_endpoint": {
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z]{3}$", "description": "IATA code for flights." },
+        "name": { "type": "string" },
+        "lat": { "$ref": "#/definitions/latitude" },
+        "lng": { "$ref": "#/definitions/longitude" },
+        "local_date": { "$ref": "#/definitions/date" },
+        "local_time": { "$ref": "#/definitions/time" },
+        "timezone": { "type": "string" }
+      },
+      "anyOf": [
+        { "required": ["code"] },
+        { "required": ["name"] }
+      ]
+    },
+    "reservation": {
+      "type": "object",
+      "required": ["type", "title", "date"],
+      "properties": {
+        "type": { "type": "string", "enum": ["restaurant", "event", "tour", "activity", "other"] },
+        "title": { "type": "string", "minLength": 1 },
+        "date": { "$ref": "#/definitions/date" },
+        "time": { "$ref": "#/definitions/time" },
+        "item_id": { "$ref": "#/definitions/item_id" },
+        "confirmation": { "type": "string", "maxLength": 100 },
+        "price": { "type": "number", "minimum": 0 },
+        "notes": { "type": "string" }
+      }
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["quoted", "estimated"],
+      "description": "quoted: read from a fetched page showing the trip dates; estimated: anything else."
+    },
+    "budget_row": {
+      "type": "object",
+      "required": ["category", "name", "amount", "basis", "confidence"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["Transport", "Accommodation", "Food", "Activities", "Other"]
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "amount": { "type": "number", "minimum": 0 },
+        "basis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "How the amount was computed, for example '2 persons × 3 days × 55 CHF'."
+        },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "notes": { "type": "string" }
+      }
+    },
+    "todo": {
+      "type": "object",
+      "required": ["title"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "due_date": { "$ref": "#/definitions/date" },
+        "notes": { "type": "string" },
+        "derived_from": {
+          "type": "string",
+          "description": "What the todo comes from: a stay name, a transport title, a reservation title."
+        }
+      }
+    },
+    "packing_item": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "category": { "type": "string" },
+        "quantity": { "type": "integer", "minimum": 1 },
+        "notes": { "type": "string" }
+      }
+    },
+    "collab_note": {
+      "type": "object",
+      "required": ["title", "content"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "content": { "type": "string" }
+      }
+    }
+  }
+}

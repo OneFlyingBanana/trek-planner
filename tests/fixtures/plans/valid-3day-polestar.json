@@ -1,0 +1,368 @@
+{
+  "schema_version": 2,
+  "plan_id": "fixture-3day-polestar",
+  "title": "fixture",
+  "trek_title": "[paperclip] fixture",
+  "description": "Standing fixture trip for the trek-planner build pipeline: three days Chamoson - Annecy - Chamonix - Chamoson in the Polestar 2. Coordinates are approximate and get pinned with search_place in the skeleton build.",
+  "start_date": "2026-05-15",
+  "end_date": "2026-05-17",
+  "currency": "CHF",
+  "travelers": 2,
+  "transport_mode": "own car",
+  "starting_location": {
+    "name": "Home, Chamoson",
+    "address": "1955 Chamoson, Switzerland",
+    "lat": 46.2017,
+    "lng": 7.226
+  },
+  "brief": {
+    "travelers": 2,
+    "pace": "balanced",
+    "vehicle": {
+      "type": "Polestar 2 MY25 Long Range Dual Motor",
+      "ev": true,
+      "battery_kwh": 79,
+      "kwh_per_100": 21,
+      "fill_percent": 80,
+      "charging_socket": "CCS",
+      "min_kw": 50
+    },
+    "day_start": "09:00",
+    "day_end": "19:00",
+    "max_driving_min_per_day": 480,
+    "max_driving_min_per_leg": 150,
+    "avoid": [],
+    "budget_tier": "mid-range",
+    "must": ["Lake Annecy old town", "Mer de Glace"],
+    "avoid_list": [],
+    "sources": {
+      "travelers": "profile",
+      "pace": "profile",
+      "vehicle": "profile",
+      "day_start": "profile",
+      "day_end": "profile",
+      "max_driving_min_per_day": "profile",
+      "max_driving_min_per_leg": "profile",
+      "budget_tier": "profile",
+      "must": "issue"
+    },
+    "driving_settings": {
+      "settings": {
+        "roadtrip_vehicle": "electric",
+        "roadtrip_battery_kwh": 79,
+        "roadtrip_kwh_per_100": 21,
+        "roadtrip_battery_degradation": 3,
+        "roadtrip_fill_percent": 80,
+        "roadtrip_leg_minutes": 150,
+        "roadtrip_day_minutes": 480,
+        "roadtrip_day_start": "09:00",
+        "roadtrip_day_end": "19:00",
+        "roadtrip_day_end_mode": "stop",
+        "roadtrip_hotel_bookends": true,
+        "roadtrip_avoid": "",
+        "roadtrip_service_stops_in_days": true,
+        "roadtrip_show_hazards": true
+      },
+      "confirmed_on": "2026-10-22",
+      "confirmed_by": "roald",
+      "confirmed_ref": "ISD-4 design revision 4, section 9 assumption 4: approving the design confirms the Polestar values for the fixture trip only"
+    }
+  },
+  "days": [
+    {
+      "day_number": 1,
+      "date": "2026-05-15",
+      "title": "Day 1: Chamoson to Annecy via Chillon",
+      "base": { "name": "Annecy", "lat": 45.8992, "lng": 6.1294 },
+      "move": true,
+      "items": [
+        {
+          "id": "d01-p01",
+          "type": "place",
+          "name": "Home, Chamoson",
+          "address": "1955 Chamoson, Switzerland",
+          "lat": 46.2017,
+          "lng": 7.226,
+          "time_start": "09:00",
+          "origin": "roald",
+          "notes": "Departure, battery at 80 percent."
+        },
+        {
+          "id": "d01-p02",
+          "type": "place",
+          "name": "Château de Chillon",
+          "address": "Avenue de Chillon 21, 1820 Veytaux, Switzerland",
+          "lat": 46.4142,
+          "lng": 6.9275,
+          "time_start": "10:00",
+          "time_end": "11:30",
+          "duration_min": 90,
+          "price": 30,
+          "currency": "CHF",
+          "website": "https://www.chillon.ch",
+          "source": { "url": "https://www.chillon.ch" },
+          "verified_on": "2026-10-22",
+          "origin": "research",
+          "notes": "Entry about 15 CHF per adult."
+        },
+        {
+          "id": "d01-p03",
+          "type": "note",
+          "text": "About 1 h 40 min to Annecy via Geneva (A1, A40).",
+          "icon": "🚗"
+        },
+        {
+          "id": "d01-p04",
+          "type": "place",
+          "name": "Vieille Ville d'Annecy",
+          "address": "Rue Sainte-Claire, 74000 Annecy, France",
+          "lat": 45.8992,
+          "lng": 6.1261,
+          "time_start": "14:00",
+          "time_end": "17:00",
+          "duration_min": 180,
+          "source": { "url": "https://www.lac-annecy.com" },
+          "verified_on": "2026-10-22",
+          "origin": "research"
+        }
+      ],
+      "legs": [
+        { "from_id": "d01-p01", "to_id": "d01-p02", "km": 58, "min": 45, "method": "estimate" },
+        { "from_id": "d01-p02", "to_id": "d01-p04", "km": 120, "min": 100, "method": "estimate" }
+      ],
+      "vias": []
+    },
+    {
+      "day_number": 2,
+      "date": "2026-05-16",
+      "title": "Day 2: Annecy to Chamonix",
+      "base": { "name": "Chamonix-Mont-Blanc", "lat": 45.9237, "lng": 6.8694 },
+      "move": true,
+      "items": [
+        {
+          "id": "d02-p01",
+          "type": "place",
+          "name": "Le Pâquier lakefront",
+          "address": "Avenue d'Albigny, 74000 Annecy, France",
+          "lat": 45.9018,
+          "lng": 6.1335,
+          "time_start": "10:00",
+          "time_end": "11:00",
+          "duration_min": 60,
+          "source": { "url": "https://www.lac-annecy.com" },
+          "verified_on": "2026-10-22",
+          "origin": "research"
+        },
+        {
+          "id": "d02-p02",
+          "type": "place",
+          "name": "Restaurant stop, Sallanches",
+          "address": "74700 Sallanches, France",
+          "lat": 45.9361,
+          "lng": 6.6317,
+          "time_start": "12:30",
+          "time_end": "13:30",
+          "duration_min": 60,
+          "stop_type": "restaurant",
+          "origin": "corridor",
+          "notes": "Placeholder lunch stop; the corridor search replaces it with a real candidate."
+        },
+        {
+          "id": "d02-p03",
+          "type": "place",
+          "name": "Mer de Glace, Montenvers",
+          "address": "35 Place de la Mer de Glace, 74400 Chamonix-Mont-Blanc, France",
+          "lat": 45.9321,
+          "lng": 6.9176,
+          "time_start": "14:30",
+          "time_end": "17:30",
+          "duration_min": 180,
+          "price": 80,
+          "currency": "CHF",
+          "website": "https://www.montblancnaturalresort.com",
+          "source": { "url": "https://www.montblancnaturalresort.com" },
+          "verified_on": "2026-10-22",
+          "origin": "research",
+          "notes": "Montenvers train from Chamonix; price for two, estimated."
+        }
+      ],
+      "legs": [
+        { "from_id": "d02-p01", "to_id": "d02-p02", "km": 55, "min": 50, "method": "estimate" },
+        { "from_id": "d02-p02", "to_id": "d02-p03", "km": 28, "min": 35, "method": "estimate" }
+      ],
+      "vias": []
+    },
+    {
+      "day_number": 3,
+      "date": "2026-05-17",
+      "title": "Day 3: Chamonix to Chamoson via Martigny",
+      "base": { "name": "Home, Chamoson", "lat": 46.2017, "lng": 7.226 },
+      "move": true,
+      "items": [
+        {
+          "id": "d03-p01",
+          "type": "place",
+          "name": "Aiguille du Midi cable car, lower station",
+          "address": "100 Place de l'Aiguille du Midi, 74400 Chamonix-Mont-Blanc, France",
+          "lat": 45.9188,
+          "lng": 6.87,
+          "time_start": "09:30",
+          "time_end": "12:00",
+          "duration_min": 150,
+          "source": { "url": "https://www.montblancnaturalresort.com" },
+          "verified_on": "2026-10-22",
+          "origin": "research"
+        },
+        {
+          "id": "d03-p02",
+          "type": "note",
+          "text": "Col des Montets and Col de la Forclaz to Martigny, about 1 h.",
+          "icon": "🏔️"
+        },
+        {
+          "id": "d03-p03",
+          "type": "place",
+          "name": "Fondation Pierre Gianadda",
+          "address": "Rue du Forum 59, 1920 Martigny, Switzerland",
+          "lat": 46.0966,
+          "lng": 7.0727,
+          "time_start": "14:00",
+          "time_end": "16:00",
+          "duration_min": 120,
+          "price": 40,
+          "currency": "CHF",
+          "website": "https://www.gianadda.ch",
+          "source": { "url": "https://www.gianadda.ch" },
+          "verified_on": "2026-10-22",
+          "origin": "research"
+        },
+        {
+          "id": "d03-p04",
+          "type": "place",
+          "name": "Home, Chamoson",
+          "address": "1955 Chamoson, Switzerland",
+          "lat": 46.2017,
+          "lng": 7.226,
+          "time_start": "16:30",
+          "origin": "roald"
+        }
+      ],
+      "legs": [
+        { "from_id": "d03-p01", "to_id": "d03-p03", "km": 45, "min": 60, "method": "estimate" },
+        { "from_id": "d03-p03", "to_id": "d03-p04", "km": 26, "min": 25, "method": "estimate" }
+      ],
+      "vias": [
+        {
+          "lat": 46.0589,
+          "lng": 7.0028,
+          "after_item_id": "d03-p01",
+          "reason": "Col de la Forclaz, the scenic road into the Rhône valley"
+        }
+      ]
+    }
+  ],
+  "stays": [
+    {
+      "name": "Hôtel du Palais de l'Isle",
+      "address": "13 Rue Perrière, 74000 Annecy, France",
+      "lat": 45.8988,
+      "lng": 6.1272,
+      "check_in_day": 1,
+      "check_out_day": 2,
+      "check_in_time": "15:00",
+      "check_out_time": "11:00",
+      "nights": 1,
+      "price_per_night": 180,
+      "total_price": 180,
+      "source": "web",
+      "confidence": "estimated",
+      "price_checked_on": "2026-10-22",
+      "notes": "Fixture value; no price page was fetched.",
+      "reason": "In the old town, walking distance to the lake.",
+      "alternatives": []
+    },
+    {
+      "name": "Hôtel Le Morgane",
+      "address": "145 Avenue de l'Aiguille du Midi, 74400 Chamonix-Mont-Blanc, France",
+      "lat": 45.9186,
+      "lng": 6.8716,
+      "check_in_day": 2,
+      "check_out_day": 3,
+      "check_in_time": "15:00",
+      "check_out_time": "11:00",
+      "nights": 1,
+      "price_per_night": 160,
+      "total_price": 160,
+      "source": "web",
+      "confidence": "estimated",
+      "price_checked_on": "2026-10-22",
+      "notes": "Fixture value; no price page was fetched.",
+      "reason": "Next to the Aiguille du Midi station for the morning.",
+      "alternatives": []
+    }
+  ],
+  "transport": [],
+  "reservations": [],
+  "budget": [
+    {
+      "category": "Transport",
+      "name": "Charging (about 330 km)",
+      "amount": 60,
+      "basis": "330 km × 21 kWh/100 km × 0.85 CHF/kWh",
+      "confidence": "estimated"
+    },
+    {
+      "category": "Accommodation",
+      "name": "Hôtel du Palais de l'Isle (1 night, Day 1-2)",
+      "amount": 180,
+      "basis": "1 night × 180 CHF",
+      "confidence": "estimated"
+    },
+    {
+      "category": "Accommodation",
+      "name": "Hôtel Le Morgane (1 night, Day 2-3)",
+      "amount": 160,
+      "basis": "1 night × 160 CHF",
+      "confidence": "estimated"
+    },
+    {
+      "category": "Food",
+      "name": "Food and drinks (3 days, 2 persons)",
+      "amount": 330,
+      "basis": "2 persons × 3 days × 55 CHF",
+      "confidence": "estimated"
+    },
+    {
+      "category": "Activities",
+      "name": "Entry fees (Chillon, Mer de Glace, Gianadda)",
+      "amount": 150,
+      "basis": "30 + 80 + 40 CHF",
+      "confidence": "estimated"
+    },
+    {
+      "category": "Other",
+      "name": "Buffer",
+      "amount": 88,
+      "basis": "10 percent of 880 CHF",
+      "confidence": "estimated"
+    }
+  ],
+  "budget_total": { "amount": 968, "per_person": 484 },
+  "todos": [
+    {
+      "title": "Book Hôtel du Palais de l'Isle",
+      "due_date": "2026-05-01",
+      "derived_from": "Hôtel du Palais de l'Isle"
+    }
+  ],
+  "packing": [
+    { "name": "CCS charging card", "category": "Car" },
+    { "name": "Hiking boots", "category": "Footwear" }
+  ],
+  "collab_notes": [
+    {
+      "title": "Fixture trip",
+      "content": "Standing [paperclip] fixture trip used by the trek-planner build tests. Safe to ignore."
+    }
+  ]
+}

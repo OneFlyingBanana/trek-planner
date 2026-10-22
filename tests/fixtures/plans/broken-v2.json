@@ -1,0 +1,100 @@
+{
+  "schema_version": 2,
+  "plan_id": "Broken Fixture",
+  "title": "broken",
+  "trek_title": "broken",
+  "description": "Deliberately broken v2 plan. Every defect is listed in tests/fixtures/plans/README.md with the schema rule that catches it.",
+  "start_date": "2026-5-15",
+  "end_date": "2026-05-17",
+  "currency": "chf",
+  "travelers": 0,
+  "starting_location": {
+    "name": "Home, Chamoson",
+    "lat": 46.2017
+  },
+  "brief": {
+    "travelers": 2,
+    "pace": "relaxed",
+    "vehicle": { "type": "Polestar 2" },
+    "sources": { "travelers": "guess" },
+    "driving_settings": {
+      "settings": {
+        "roadtrip_vehicle": "ev",
+        "roadtrip_fill_percent": 120,
+        "roadtrip_day_start": "9:00",
+        "roadtrip_avoid": "tolls",
+        "roadtrip_range": 300
+      },
+      "confirmed_on": "",
+      "confirmed_by": "agent"
+    }
+  },
+  "days": [
+    {
+      "day_number": 1,
+      "title": "Day 1",
+      "base": { "name": "Annecy", "lat": 45.8992 },
+      "move": "yes",
+      "items": [
+        {
+          "id": "p1",
+          "type": "place",
+          "name": "Château de Chillon",
+          "lat": 46.4142,
+          "lng": 6.9275,
+          "stop_type": "castle",
+          "origin": "guess",
+          "source": {}
+        },
+        {
+          "type": "place",
+          "name": "Vieille Ville d'Annecy",
+          "lat": 45.8992
+        },
+        {
+          "type": "note",
+          "icon": "car"
+        }
+      ],
+      "legs": [
+        { "from_id": "d01-p01", "to_id": "d01-p02", "km": 58, "min": 45, "method": "trek" },
+        { "from_id": "d01-p02", "to_id": "d01-p03", "km": -5, "min": 45, "method": "google" }
+      ],
+      "vias": [
+        { "lat": 46.0589, "lng": 7.0028, "after_item_id": "d01-p01" }
+      ]
+    }
+  ],
+  "stays": [
+    {
+      "name": "Hôtel du Palais de l'Isle",
+      "lat": 45.8988,
+      "lng": 6.1272,
+      "check_in_day": 1,
+      "check_out_day": 1,
+      "nights": 0,
+      "price_per_night": 180,
+      "confidence": "guessed",
+      "price_source_url": "booking.com/hotel"
+    }
+  ],
+  "accommodations": [],
+  "transport": [
+    {
+      "type": "flight",
+      "title": "GVA to CDG",
+      "from": { "code": "gva" },
+      "to": {},
+      "source": "pdf"
+    }
+  ],
+  "budget": [
+    {
+      "category": "Hotels",
+      "name": "Hôtel du Palais de l'Isle",
+      "amount": -180
+    }
+  ],
+  "budget_total": { "amount": "968" },
+  "unknown_top_level_field": true
+}

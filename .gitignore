@@ -5,6 +5,6 @@ data/
 __pycache__/
 uv.lock
 ACTION_PLAN.md
-plans/
+/plans/
 DEV_LOGS/
 profile/USER_PROFILE.md
