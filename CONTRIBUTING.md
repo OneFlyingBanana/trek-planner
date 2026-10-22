@@ -41,3 +41,13 @@ Only the Engineering Lead merges, and never with `gh pr merge --admin`.
   `Assisted-by: Paperclip <role>`, for example
   `Assisted-by: Paperclip Senior Developer`.
 - Commits made by Roald do not need the trailer.
+
+## 6. Line endings
+
+- Text files are stored and checked out with LF line endings on every platform.
+  The root `.gitattributes` (`* text=auto eol=lf`) makes Git do this, whatever
+  your `core.autocrlf` setting says.
+- The root `.editorconfig` sets `end_of_line = lf` so editors that read it save
+  LF as well.
+- If `git add` warns that "CRLF will be replaced by LF", that is Git normalising
+  a file you saved with CRLF. Nothing is wrong, and the commit will contain LF.
